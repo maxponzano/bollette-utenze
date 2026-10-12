@@ -158,6 +158,8 @@ drop policy if exists offerte_admin on public.offerte;
 create policy offerte_admin on public.offerte for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
 
+-- permessi espliciti: necessari se il progetto non espone automaticamente le nuove tabelle
+grant usage on schema public to authenticated;
 grant select, insert, update, delete on public.clienti, public.accessi, public.forniture, public.bollette, public.offerte to authenticated;
 grant select on public.admins to authenticated;
 grant execute on function public.is_admin(), public.puo_vedere(uuid), public.puo_vedere_fornitura(uuid), public.email_corrente() to authenticated;
