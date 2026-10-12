@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cruscotto Costi Energia — Basilico</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#020617; --panel:#0f172a; --panel-border:#1e293b; --text:#f1f5f9; --muted:#64748b;
+    --amber:#fbbf24; --cyan:#22d3ee; --violet:#a78bfa; --rose:#fb7185; --emerald:#34d399;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;}
+  header{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--panel-border);}
+  .header-inner{max-width:1080px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .brand{display:flex;align-items:center;gap:10px;min-width:0;}
+  .brand-icon{width:36px;height:36px;border-radius:8px;background:var(--panel);border:1px solid var(--panel-border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+  .brand h1{font-size:16px;font-weight:700;margin:0;letter-spacing:-0.01em;}
+  .brand p{font-size:12px;color:var(--muted);margin:2px 0 0;}
+  .header-actions{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  .save-indicator{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;min-width:70px;}
+  button{font-family:inherit;cursor:pointer;}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;border:none;border-radius:8px;padding:9px 14px;transition:opacity .15s;}
+  .btn:hover{opacity:.88;}
+  .btn-primary{background:var(--amber);color:#0f172a;}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--panel-border);}
+  .btn-ghost:hover{color:var(--text);background:var(--panel);}
+  .tabs{max-width:1080px;margin:0 auto;padding:0 20px;display:flex;gap:4px;}
+  .tab-btn{background:none;border:none;color:var(--muted);font-size:13.5px;font-weight:600;padding:10px 12px;border-bottom:2px solid transparent;}
+  .tab-btn.active{color:var(--text);border-bottom-color:var(--amber);}
+  main{max-width:1080px;margin:0 auto;padding:24px 20px 60px;}
+  .grid{display:grid;gap:12px;}
+  .grid-kpi{grid-template-columns:repeat(2,1fr);}
+  @media(min-width:820px){.grid-kpi{grid-template-columns:repeat(4,1fr);}}
+  .card{background:var(--panel);border:1px solid var(--panel-border);border-radius:10px;padding:16px;}
+  .kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 8px;}
+  .kpi-value{font-size:26px;font-weight:700;margin:0;}
+  .kpi-sub{font-size:12px;color:var(--muted);margin:4px 0 0;}
+  h3.section-title{font-size:13.5px;font-weight:700;color:#cbd5e1;margin:0 0 14px;}
+  .empty-state{border:1px dashed var(--panel-border);border-radius:10px;padding:50px 20px;text-align:center;color:var(--muted);}
+  .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+  @media(min-width:700px){.form-grid{grid-template-columns:repeat(3,1fr);}}
+  @media(min-width:980px){.form-grid{grid-template-columns:repeat(6,1fr);}}
+  .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px;}
+  .field input, .field select{width:100%;background:#020617;border:1px solid #334155;border-radius:7px;padding:9px 10px;color:var(--text);font-size:13.5px;font-family:inherit;}
+  .field input:focus, .field select:focus{outline:2px solid var(--amber);outline-offset:1px;border-color:var(--amber);}
+  .span-2{grid-column:span 2;}
+  .span-full{grid-column:1/-1;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:0 10px 8px 0;border-bottom:1px solid var(--panel-border);}
+  td{padding:9px 10px 9px 0;border-bottom:1px solid #1e293b99;vertical-align:top;}
+  .cell-empty{color:#334155;}
+  .fornitore-line{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .note-line{font-size:11px;color:#475569;font-style:italic;margin-top:2px;}
+  .row-actions{display:inline-flex;flex-direction:column;gap:3px;margin-left:6px;}
+  .icon-btn{background:none;border:none;color:#475569;padding:1px;font-size:12px;line-height:1;}
+  .icon-btn:hover{color:var(--rose);}
+  .icon-btn.edit:hover{color:var(--text);}
+  .table-wrap{overflow-x:auto;}
+  .top-actions{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .confirm-row{display:flex;align-items:center;gap:10px;font-size:12px;}
+  .confirm-row .yes{color:var(--rose);font-weight:600;background:none;border:none;}
+  .confirm-row .no{color:var(--muted);background:none;border:none;}
+  .link-btn{background:none;border:none;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:5px;}
+  .link-btn:hover{color:var(--rose);}
+  .offer-add{color:var(--amber);background:none;border:none;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:5px;}
+  .chart-svg{width:100%;height:auto;display:block;}
+  .legend{display:flex;gap:16px;font-size:12px;margin-top:6px;flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;color:var(--muted);}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .hint{font-size:11.5px;color:#475569;margin-top:10px;}
+  .file-btn{display:inline-block;}
+  .file-btn input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-icon">&#9201;</div>
+      <div style="min-width:0;">
+        <h1>Cruscotto Costi Energia</h1>
+        <p>Basilico di Bonino Alessandro &middot; Energia Elettrica</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="save-indicator" id="saveIndicator"></span>
+      <label class="btn btn-ghost file-btn">
+        &#8593; Importa Excel
+        <input type="file" id="importInput" accept=".xlsx,.xls">
+      </label>
+      <button class="btn btn-primary" id="exportBtn">&#8595; Scarica Excel</button>
+    </div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+</header>
+<main id="main"></main>
+
+<script>
+const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+const MESI_BREVI = ["Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"];
+const UTENZE = [
+  { key:"casaLuce", label:"Energia Elettrica", unit:"kWh", color:"var(--amber)", rgb:"251,191,36" },
+  { key:"casaGas", label:"Gas", unit:"Smc", color:"var(--cyan)", rgb:"34,211,238" },
+];
+const ELETTRICO_SERIES = UTENZE.filter(u=>u.key!=="casaGas");
+const GAS_SERIES = UTENZE.filter(u=>u.key==="casaGas");
+
+const SEED_ENTRIES = [
+  { id:"2025-6", anno:2025, mese:6,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:3647.97, costo:1144.18, note:"Offerta PMI SILVER MF — fattura EE00489769/2025 del 10/07/2025" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:65, costo:112.37, note:"Offerta PMI GAS VARIABILE PSV — cliente Basilico di Cantaboni Cinzia — fattura GN00264087/2025 del 10/07/2025" } },
+  { id:"2025-7", anno:2025, mese:7,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:3682.89, costo:1119.08, note:"Offerta ULTRAGREEN FIX BASSA TENSIONE — fattura EE00566615/2025 del 07/08/2025" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:61, costo:95.06, note:"Offerta ULTRAGREEN FIX — cliente Basilico di Cantaboni Cinzia — fattura GN00304582/2025 del 07/08/2025" } },
+  { id:"2025-8", anno:2025, mese:8,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:2031.12, costo:633.89, note:"Offerta ULTRAGREEN FIX BASSA TENSIONE — fattura EE00646658/2025 del 10/09/2025" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:61, costo:104.82, note:"Offerta ULTRAGREEN FIX — include piccolo ricalcolo di +6,98€ — fattura GN00387521/2025 del 30/09/2025" } },
+  { id:"2025-9", anno:2025, mese:9,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:3297.36, costo:973.50, note:"Offerta ULTRAGREEN FIX BASSA TENSIONE — fattura EE00727896/2025 del 07/10/2025" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:70, costo:106.74, note:"Offerta ULTRAGREEN FIX — fattura GN00389922/2025 del 07/10/2025" } },
+  { id:"2025-10", anno:2025, mese:10,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:3328.76, costo:1122.05, note:"Offerta ULTRAGREEN FIX BASSA TENSIONE — fattura EE00806894/2025 del 07/11/2025" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:1178, costo:1385.44, note:"Offerta ULTRAGREEN FIX — fattura GN00432592/2025 del 07/11/2025. Importo elevato perch\u00e9 include un grosso conguaglio retroattivo di 790,93€ (848 Smc) per mag-set 2025: le letture stimate dei mesi precedenti erano molto pi\u00f9 basse della lettura reale rilevata con l'autolettura del 21/10/2025. Il consumo di ottobre vero e proprio \u00e8 330 Smc (~594,51€ al netto del conguaglio)." } },
+  { id:"2025-11", anno:2025, mese:11,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:3197.00, costo:1083.02, note:"Offerta ULTRAGREEN FIX BASSA TENSIONE — fattura EE00887025/2025 del 05/12/2025" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:471, costo:561.61, note:"Offerta ULTRAGREEN FIX — fattura GN00474823/2025 del 05/12/2025" } },
+  { id:"2025-12", anno:2025, mese:12,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:3375.19, costo:1135.95, note:"Offerta ULTRAGREEN FIX BASSA TENSIONE — fattura EE00001243/2026 del 07/01/2026" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:734, costo:861.16, note:"Offerta ULTRAGREEN FIX — cliente Basilico di Cantaboni Cinzia — fattura GN00000388/2026 del 07/01/2026" } },
+  { id:"2026-1", anno:2026, mese:1,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:2253.51, costo:782.24, note:"Offerta ULTRAGREEN MF BASSA TENSIONE — fattura EE00105397/2026 del 06/02/2026" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:1034.58, costo:1822.18, note:"Mese diviso tra due intestatari per cambio cliente il 16/01: 1-15/01 Cantaboni Cinzia, 600,69 Smc, 1.170,46€ (include conguagli di ricalcolo nov-dic 2025 per 372,66€ — fattura GN00041777/2026); 16-31/01 Bonino Alessandro, 433,89 Smc, 651,72€ (include oneri una tantum di voltura per 117,94€ — fattura GN00041624/2026), entrambe del 06/02/2026" } },
+  { id:"2026-2", anno:2026, mese:2,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:3332.13, costo:1332.92, note:"Offerta ULTRAGREEN MF BASSA TENSIONE — fattura EE00183301/2026 del 06/03/2026" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:623.21, costo:726.73, note:"Offerta ULTRAGREEN — include ricalcolo di -0,08€ per lettura precedentemente errata — fattura GN00097880/2026 del 06/03/2026" } },
+  { id:"2026-3", anno:2026, mese:3,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:3548.56, costo:1370.39, note:"Offerta ULTRAGREEN MF BASSA TENSIONE — fattura EE00263349/2026 del 07/04/2026" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:474.82, costo:666.34, note:"Offerta ULTRAGREEN — fattura GN00145994/2026 del 07/04/2026" } },
+  { id:"2026-4", anno:2026, mese:4,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:3380.52, costo:1123.02, note:"Offerta ULTRAGREEN MF BASSA TENSIONE — fattura EE00342015/2026 del 07/05/2026" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:233.32, costo:313.38, note:"Offerta ULTRAGREEN — fattura GN00194345/2026 del 07/05/2026" } },
+  { id:"2026-5", anno:2026, mese:5,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:3590.33, costo:1172.65, note:"Offerta ULTRAGREEN MF BASSA TENSIONE — fattura EE00418821/2026 del 08/06/2026" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:67.54, costo:109.58, note:"Offerta ULTRAGREEN — fattura GN00241183/2026 del 08/06/2026" } },
+  { id:"2026-6", anno:2026, mese:6,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:3652.80, costo:1273.69, note:"Offerta ULTRAGREEN MF BASSA TENSIONE — fattura EE00495245/2026 del 07/07/2026" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:60.38, costo:100.88, note:"Offerta ULTRAGREEN — intestazione ceduta a Basilico di Bonino Alessandro (nuova fornitura dal 16/01/2026) — fattura GN00288138/2026 del 07/07/2026" } },
+  { id:"2026-7", anno:2026, mese:7,
+    casaLuce:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:3514.61, costo:1399.50, note:"Offerta ULTRAGREEN MF BASSA TENSIONE — fattura EE00573904/2026 del 07/08/2026" },
+    casaGas:{ fornitore:"FuturEnergy (Energia Pulita)", consumo:56.28, costo:102.98, note:"Offerta ULTRAGREEN — cliente Basilico di Bonino Alessandro — fattura GN00335115/2026 del 07/08/2026" } },
+];
+
+let state = {
+  entries: JSON.parse(JSON.stringify(SEED_ENTRIES)),
+  tab: "dashboard",
+  form: emptyForm(),
+  offers: [
+    { id:1, fornitore:"FuturEnergy (attuale)", utenza:"casaLuce", prezzo:"", spread:"", fisso:"" },
+    { id:2, fornitore:"Nuovo fornitore", utenza:"casaLuce", prezzo:"", spread:"", fisso:"" },
+  ],
+  confirmReset: false,
+  compare: { aFromAnno:null, aFromMese:null, aToAnno:null, aToMese:null, bFromAnno:null, bFromMese:null, bToAnno:null, bToMese:null },
+  metric: "costo",
+};
+
+function emptyForm(){
+  const now = new Date();
+  return { utenza:"casaLuce", anno:now.getFullYear(), mese: now.getMonth()+1, fornitore:"", consumo:"", costo:"", note:"" };
+}
+function fmtEUR(v){
+  if(v==null) return "—";
+  const neg = v<0, abs = Math.abs(v);
+  const parts = abs.toFixed(2).split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return (neg?"-":"") + parts[0] + "," + parts[1] + " €";
+}
+function fmtNum(v,d){
+  if(v==null) return "—";
+  d = d||0;
+  const neg = v<0, abs = Math.abs(v);
+  const str = abs.toFixed(d);
+  const parts = str.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return (neg?"-":"") + (d>0 ? parts.join(",") : parts[0]);
+}
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function sortedEntries(){ return [...state.entries].sort((a,b)=> a.anno-b.anno || a.mese-b.mese); }
+function monthsWithDataForYear(se, year){ return new Set(se.filter(e=>e.anno===year).map(e=>e.mese)); }
+function commonMonths(se, yearA, yearB){
+  const a = monthsWithDataForYear(se, yearA), b = monthsWithDataForYear(se, yearB);
+  return [...a].filter(m=>b.has(m)).sort((x,y)=>x-y);
+}
+function monthRangeLabelFor(months){
+  if(!months.length) return null;
+  return months.length===1 ? MESI_BREVI[months[0]-1] : `${MESI_BREVI[months[0]-1]}-${MESI_BREVI[months[months.length-1]-1]}`;
+}
+
+// ---------------- render orchestration ----------------
+function render(){
+  renderTabs();
+  const se = sortedEntries();
+  if(state.tab==="dashboard") renderDashboard(se);
+  else if(state.tab==="bollette") renderBollette(se);
+  else renderConfronto(se);
+  document.getElementById("saveIndicator").innerHTML = state._justSaved ? "&#10003; salvato" : "";
+}
+
+function renderTabs(){
+  const tabs = [["dashboard","Dashboard"],["bollette","Bollette"],["confronto","Confronto offerte"]];
+  document.getElementById("tabs").innerHTML = tabs.map(([id,label])=>
+    `<button class="tab-btn ${state.tab===id?"active":""}" data-tab="${id}">${label}</button>`
+  ).join("");
+  document.querySelectorAll(".tab-btn").forEach(b=>{
+    b.addEventListener("click", ()=>{ state.tab=b.dataset.tab; render(); });
+  });
+}
+
+// ---------------- dashboard ----------------
+const UNIT_BY_KEY = { casaLuce:"kWh", casaGas:"Smc" };
+function fmtByMetric(v, metric, key){
+  if(v==null) return "—";
+  return metric==="costo" ? fmtEUR(v) : `${fmtNum(v)} ${UNIT_BY_KEY[key]}`;
+}
+function totalForYear(se, y, metric="costo"){ return se.filter(e=>e.anno===y).reduce((s,e)=> s+(e.casaLuce?.[metric]||0)+(e.casaGas?.[metric]||0), 0); }
+function latestSupplierInfo(se, key){
+  for(let i=se.length-1;i>=0;i--){
+    if(se[i][key]) return { fornitore: se[i][key].fornitore, anno:se[i].anno, mese:se[i].mese, costo:se[i][key].costo, consumo:se[i][key].consumo };
+  }
+  return null;
+}
+function periodEntries(se, anno, mese){
+  return se.filter(e=> e.anno===anno && (mese===""||mese==null || e.mese===Number(mese)));
+}
+function periodTotals(se, anno, mese, metric="costo"){
+  const rows = periodEntries(se, anno, mese);
+  const sum = k => rows.reduce((s,e)=> s+(e[k]?.[metric]||0), 0);
+  return { casaLuce:sum("casaLuce"), casaGas:sum("casaGas"), totale: sum("casaLuce")+sum("casaGas"), count: rows.length };
+}
+function rangeEntries(se, fromAnno, fromMese, toAnno, toMese){
+  const from = Number(fromAnno)*12 + Number(fromMese);
+  const to = Number(toAnno)*12 + Number(toMese);
+  const lo = Math.min(from,to), hi = Math.max(from,to);
+  return se.filter(e=>{ const k = e.anno*12 + e.mese; return k>=lo && k<=hi; });
+}
+function rangeTotals(se, fromAnno, fromMese, toAnno, toMese, metric="costo"){
+  const rows = rangeEntries(se, fromAnno, fromMese, toAnno, toMese);
+  const sum = k => rows.reduce((s,e)=> s+(e[k]?.[metric]||0), 0);
+  const casaLuce=sum("casaLuce"), casaGas=sum("casaGas");
+  return { casaLuce, casaGas, totale: casaLuce+casaGas, count: rows.length };
+}
+
+function renderDashboard(se){
+  const el = document.getElementById("main");
+  if(se.length===0){
+    el.innerHTML = `<div class="empty-state"><div style="font-size:28px;margin-bottom:8px;">&#9201;</div>
+      <p style="color:#cbd5e1;font-weight:600;margin:0;">Nessuna bolletta ancora registrata</p>
+      <p style="margin:6px 0 0;">Vai su &laquo;Bollette&raquo; per aggiungere la prima lettura.</p></div>`;
+    return;
+  }
+  const metric = state.metric || "costo";
+  const isCost = metric==="costo";
+  const fmtKWh = v => `${fmtNum(v)} kWh`;
+  const fmtSmc = v => `${fmtNum(v)} Smc`;
+  const varText = pct => pct==null?"—":(pct>0?"+":"")+(pct*100).toFixed(1)+"%";
+  const varColor = pct => pct==null?'var(--muted)':(pct>0?'var(--rose)':'var(--emerald)');
+
+  const years = [...new Set(se.map(e=>e.anno))].sort();
+  const latestYear = years[years.length-1];
+  const prevYear = latestYear-1;
+  const cutoffMeseKpi = se[se.length-1].mese;
+  const sumRows = (rows,key,m) => rows.reduce((s,e)=> s+(e[key]?.[m]||0), 0);
+  const rowsLatestRange = se.filter(e=>e.anno===latestYear && e.mese<=cutoffMeseKpi);
+  const commonMonthsKpi = commonMonths(se, latestYear, prevYear);
+  const rowsLatestCommon = se.filter(e=>e.anno===latestYear && commonMonthsKpi.includes(e.mese));
+  const rowsPrevCommon = se.filter(e=>e.anno===prevYear && commonMonthsKpi.includes(e.mese));
+  const cmpRangeLabel = monthRangeLabelFor(commonMonthsKpi);
+  const totalLatest = sumRows(rowsLatestRange,"casaLuce","costo")+sumRows(rowsLatestRange,"casaGas","costo");
+  const totalLatestCommon = sumRows(rowsLatestCommon,"casaLuce","costo")+sumRows(rowsLatestCommon,"casaGas","costo");
+  const totalPrevCommon = sumRows(rowsPrevCommon,"casaLuce","costo")+sumRows(rowsPrevCommon,"casaGas","costo");
+  const pct = (commonMonthsKpi.length && totalPrevCommon) ? (totalLatestCommon-totalPrevCommon)/totalPrevCommon : null;
+  const eeCostLatest = sumRows(rowsLatestRange,"casaLuce","costo");
+  const eeCostLatestCommon = sumRows(rowsLatestCommon,"casaLuce","costo");
+  const eeCostPrevCommon = sumRows(rowsPrevCommon,"casaLuce","costo");
+  const pctEECost = (commonMonthsKpi.length && eeCostPrevCommon) ? (eeCostLatestCommon-eeCostPrevCommon)/eeCostPrevCommon : null;
+  const gasCostLatest = sumRows(rowsLatestRange,"casaGas","costo");
+  const gasCostLatestCommon = sumRows(rowsLatestCommon,"casaGas","costo");
+  const gasCostPrevCommon = sumRows(rowsPrevCommon,"casaGas","costo");
+  const pctGasCost = (commonMonthsKpi.length && gasCostPrevCommon) ? (gasCostLatestCommon-gasCostPrevCommon)/gasCostPrevCommon : null;
+  const elettricoLatest = sumRows(rowsLatestRange,"casaLuce","consumo");
+  const elettricoLatestCommon = sumRows(rowsLatestCommon,"casaLuce","consumo");
+  const elettricoPrevCommon = sumRows(rowsPrevCommon,"casaLuce","consumo");
+  const pctElettrico = (commonMonthsKpi.length && elettricoPrevCommon) ? (elettricoLatestCommon-elettricoPrevCommon)/elettricoPrevCommon : null;
+  const gasLatest = sumRows(rowsLatestRange,"casaGas","consumo");
+  const gasLatestCommon = sumRows(rowsLatestCommon,"casaGas","consumo");
+  const gasPrevCommon = sumRows(rowsPrevCommon,"casaGas","consumo");
+  const pctGas = (commonMonthsKpi.length && gasPrevCommon) ? (gasLatestCommon-gasPrevCommon)/gasPrevCommon : null;
+  const latestSupplier = key => { const info = latestSupplierInfo(se, key); return info ? info.fornitore : "—"; };
+
+  // Variazione EE: sempre confronto tra la bolletta Energia Elettrica del mese piu' recente e lo stesso mese dell'anno precedente
+  const currentMonthEntry = se[se.length-1];
+  const currentEECost = currentMonthEntry.casaLuce ? currentMonthEntry.casaLuce.costo : null;
+  const prevYearMonthEntry = se.find(e=>e.anno===currentMonthEntry.anno-1 && e.mese===currentMonthEntry.mese);
+  const prevEECost = prevYearMonthEntry && prevYearMonthEntry.casaLuce ? prevYearMonthEntry.casaLuce.costo : null;
+  const pctEEMonth = (prevEECost!=null && prevEECost>0 && currentEECost!=null) ? (currentEECost-prevEECost)/prevEECost : null;
+  const eeMonthLabel = `${MESI_BREVI[currentMonthEntry.mese-1]} '${String(currentMonthEntry.anno).slice(2)}`;
+
+  // init compare defaults on first render: same calendar months present in both the latest year and the previous year (so the comparison is always apples-to-apples)
+  if(state.compare.aFromAnno==null || state.compare.bFromAnno==null){
+    const latestYearForCmp = years[years.length-1];
+    const prevYearForCmp = latestYearForCmp - 1;
+    const monthsLatest = new Set(se.filter(e=>e.anno===latestYearForCmp).map(e=>e.mese));
+    const monthsPrev = new Set(se.filter(e=>e.anno===prevYearForCmp).map(e=>e.mese));
+    const commonMonths = [...monthsLatest].filter(m=>monthsPrev.has(m));
+    let bFromAnno, bFromMese, bToAnno, bToMese, aFromAnno, aFromMese, aToAnno, aToMese;
+    if(commonMonths.length){
+      bFromMese = Math.min(...commonMonths); bToMese = Math.max(...commonMonths);
+      bFromAnno = latestYearForCmp; bToAnno = latestYearForCmp;
+      aFromMese = bFromMese; aToMese = bToMese;
+      aFromAnno = prevYearForCmp; aToAnno = prevYearForCmp;
+    } else {
+      // no overlapping months between the two years: fall back to the latest month vs the same month a year earlier
+      const lastEntry = se[se.length-1];
+      bFromAnno = bToAnno = lastEntry.anno; bFromMese = bToMese = lastEntry.mese;
+      aFromAnno = aToAnno = lastEntry.anno - 1; aFromMese = aToMese = lastEntry.mese;
+    }
+    Object.assign(state.compare, { aFromAnno, aFromMese, aToAnno, aToMese, bFromAnno, bFromMese, bToAnno, bToMese });
+  }
+
+  const chartData = se.map(e=>({
+    label: `${MESI_BREVI[e.mese-1]} '${String(e.anno).slice(2)}`,
+    casaLuce: e.casaLuce? e.casaLuce[metric] : null,
+    casaGas: e.casaGas? e.casaGas[metric] : null,
+  }));
+  const yearBars = years.map(y=>{
+    const rows = se.filter(e=>e.anno===y);
+    const sum = k => sumRows(rows,k,metric);
+    return { anno:y, casaLuce:sum("casaLuce"), casaGas:sum("casaGas") };
+  });
+
+  // yearly totals with YoY — limited a mese<=cutoffMese per un confronto equo tra anni
+  const lastEntry = se[se.length-1];
+  const cutoffMese = lastEntry.mese;
+  const mesiLatestConDati = rowsLatestRange.map(e=>e.mese);
+  const minMeseLatest = mesiLatestConDati.length ? Math.min(...mesiLatestConDati) : cutoffMese;
+  const monthRangeLabel = minMeseLatest===cutoffMese ? MESI_BREVI[cutoffMese-1] : `${MESI_BREVI[minMeseLatest-1]}-${MESI_BREVI[cutoffMese-1]}`;
+  const yoyOf = (cur,prev)=> (prev!=null && prev>0) ? (cur-prev)/prev : null;
+  const yearlyRows = years.map((y,i)=>{
+    const rows = se.filter(e=>e.anno===y && e.mese<=cutoffMese);
+    const casaLuce = sumRows(rows,"casaLuce",metric), casaGas = sumRows(rows,"casaGas",metric);
+    const mesiPresenti = rows.map(e=>e.mese);
+    const rangeLabel = mesiPresenti.length ? (Math.min(...mesiPresenti)===Math.max(...mesiPresenti) ? MESI_BREVI[Math.min(...mesiPresenti)-1] : `${MESI_BREVI[Math.min(...mesiPresenti)-1]}&ndash;${MESI_BREVI[Math.max(...mesiPresenti)-1]}`) : "—";
+    const prevY = years[i-1];
+    let prevCasaLuce=null, prevCasaGas=null;
+    if(prevY!=null){
+      const commonMonthsYear = commonMonths(se, y, prevY);
+      const rowsCommon = se.filter(e=>e.anno===y && commonMonthsYear.includes(e.mese));
+      const prevRowsCommon = se.filter(e=>e.anno===prevY && commonMonthsYear.includes(e.mese));
+      var casaLuceCommon = sumRows(rowsCommon,"casaLuce",metric), casaGasCommon = sumRows(rowsCommon,"casaGas",metric);
+      prevCasaLuce = commonMonthsYear.length ? sumRows(prevRowsCommon,"casaLuce",metric) : null;
+      prevCasaGas = commonMonthsYear.length ? sumRows(prevRowsCommon,"casaGas",metric) : null;
+    }
+    const totale = isCost ? casaLuce+casaGas : null;
+    const totaleCommon = (isCost && prevY!=null && casaLuceCommon!=null) ? casaLuceCommon+casaGasCommon : null;
+    const prevTotale = isCost && prevY!=null && prevCasaLuce!=null ? prevCasaLuce+prevCasaGas : null;
+    return {
+      anno:y, casaLuce, casaGas, totale, rangeLabel,
+      yoy: isCost ? yoyOf(totaleCommon, prevTotale) : null,
+      yoyCasaLuce: yoyOf(casaLuceCommon, prevCasaLuce), yoyCasaGas: yoyOf(casaGasCommon, prevCasaGas),
+    };
+  });
+
+  // per-utenza: spesa/consumo annuo per contatore
+  // Se sono disponibili almeno 12 mesi di dati, usa il totale REALE degli ultimi 12 mesi
+  // (evita la distorsione della media estrapolata, che pesa due volte i mesi presenti sia nell'anno
+  // precedente sia in quello corrente, es. giugno/luglio se si hanno 13-23 mesi di storico)
+  const utenzaRows = UTENZE.map(u=>{
+    const rows = se.filter(e=>e[u.key]).sort((a,b)=> a.anno-b.anno || a.mese-b.mese);
+    const totale = rows.reduce((s,e)=> s+(e[u.key][metric]||0), 0);
+    const isReale = rows.length >= 12;
+    const rowsAnnue = isReale ? rows.slice(-12) : rows;
+    const mediaAnnua = rowsAnnue.length ? rowsAnnue.reduce((s,e)=> s+(e[u.key][metric]||0), 0) * (isReale?1:12/rowsAnnue.length) : 0;
+    const info = latestSupplierInfo(se, u.key);
+    return { u, totale, mediaAnnua, isReale, count:rows.length, info };
+  });
+
+  // year-over-year monthly series (Gen-Dic) for Energia Elettrica e Gas
+  const monthsIdx = Array.from({length:12}, (_,i)=>i+1);
+  const luceByYear = {}, gasByYear = {};
+  years.forEach(y=>{
+    luceByYear[y] = monthsIdx.map(m=>{
+      const entry = se.find(e=>e.anno===y && e.mese===m);
+      if(!entry || !entry.casaLuce) return null;
+      return entry.casaLuce[metric];
+    });
+    gasByYear[y] = monthsIdx.map(m=>{
+      const entry = se.find(e=>e.anno===y && e.mese===m);
+      if(!entry || !entry.casaGas) return null;
+      return entry.casaGas[metric];
+    });
+  });
+
+  // compare tool (period ranges: da mese/anno a mese/anno)
+  const cmp = state.compare;
+  const monthOptions = (selVal) => MESI.map((m,i)=>`<option value="${i+1}" ${Number(selVal)===i+1?"selected":""}>${m}</option>`).join("");
+  const allYearsExt = (()=>{ const s=new Set(years); s.add(years[0]-1); s.add(years[years.length-1]+1); return [...s].sort(); })();
+  const yearOptions = (selVal) => allYearsExt.map(y=>`<option value="${y}" ${Number(selVal)===y?"selected":""}>${y}</option>`).join("");
+  const totA = rangeTotals(se, cmp.aFromAnno, cmp.aFromMese, cmp.aToAnno, cmp.aToMese, metric);
+  const totB = rangeTotals(se, cmp.bFromAnno, cmp.bFromMese, cmp.bToAnno, cmp.bToMese, metric);
+  const diffTotale = totB.totale - totA.totale;
+  const diffPct = totA.totale ? diffTotale/totA.totale : null;
+  const labelRange = (fromAnno,fromMese,toAnno,toMese)=> `${MESI_BREVI[Number(fromMese)-1]} ${fromAnno} &ndash; ${MESI_BREVI[Number(toMese)-1]} ${toAnno}`;
+  const cmpRow = (label,key,a,b) => {
+    const d = b-a; const p = a? d/a : null;
+    const fmt = v => fmtByMetric(v, metric, key);
+    return `<tr><td style="color:#cbd5e1;">${label}</td>
+      <td class="mono" style="text-align:right;">${fmt(a)}</td>
+      <td class="mono" style="text-align:right;">${fmt(b)}</td>
+      <td class="mono" style="text-align:right;color:${d>0?'var(--rose)':(d<0?'var(--emerald)':'var(--muted)')}">${d===0?"—":(d>0?"+":"")+fmt(d)+(p==null?"":` (${p>0?"+":""}${(p*100).toFixed(1)}%)`)}</td>
+    </tr>`;
+  };
+
+  const metricSelectHTML = `
+    <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <label for="metricSelect" style="color:#94a3b8;font-size:13px;font-weight:600;">Visualizza dati e grafici per:</label>
+      <select id="metricSelect" style="max-width:260px;">
+        <option value="costo" ${isCost?"selected":""}>Spesa (€)</option>
+        <option value="consumo" ${!isCost?"selected":""}>Consumi (kWh / Smc)</option>
+      </select>
+    </div>`;
+
+  el.innerHTML = `
+    ${metricSelectHTML}
+    <div class="grid grid-kpi" style="margin-bottom:16px;">
+      ${isCost ? `
+      <div class="card"><p class="kpi-label">Spesa EE ${latestYear} (${monthRangeLabel})</p><p class="kpi-value mono" style="color:var(--amber)">${fmtEUR(eeCostLatest)}</p><p class="kpi-sub" style="color:${varColor(pctEECost)}">${pctEECost==null?"n/d":varText(pctEECost)} vs ${prevYear}${cmpRangeLabel?` (${cmpRangeLabel})`:""}</p></div>
+      <div class="card"><p class="kpi-label">Spesa Gas ${latestYear} (${monthRangeLabel})</p><p class="kpi-value mono" style="color:var(--cyan)">${fmtEUR(gasCostLatest)}</p><p class="kpi-sub" style="color:${varColor(pctGasCost)}">${pctGasCost==null?"n/d":varText(pctGasCost)} vs ${prevYear}${cmpRangeLabel?` (${cmpRangeLabel})`:""}</p></div>
+      ` : `
+      <div class="card"><p class="kpi-label">Consumo Elettrico ${latestYear} (${monthRangeLabel})</p><p class="kpi-value mono" style="color:var(--amber)">${fmtKWh(elettricoLatest)}</p><p class="kpi-sub" style="color:${varColor(pctElettrico)}">${pctElettrico==null?"n/d":varText(pctElettrico)} vs ${prevYear}${cmpRangeLabel?` (${cmpRangeLabel})`:""}</p></div>
+      <div class="card"><p class="kpi-label">Consumo Gas ${latestYear} (${monthRangeLabel})</p><p class="kpi-value mono" style="color:var(--cyan)">${fmtSmc(gasLatest)}</p><p class="kpi-sub" style="color:${varColor(pctGas)}">${pctGas==null?"n/d":varText(pctGas)} vs ${prevYear}${cmpRangeLabel?` (${cmpRangeLabel})`:""}</p></div>
+      `}
+      <div class="card"><p class="kpi-label">Variazione Bolletta EE (${eeMonthLabel} vs ${prevYear})</p><p class="kpi-value mono" style="color:${varColor(pctEEMonth)}">${varText(pctEEMonth)}</p><p class="kpi-sub">${pctEEMonth==null?"dato non disponibile":(pctEEMonth>0?"in aumento":"in calo")}</p></div>
+      <div class="card"><p class="kpi-label">Fornitore Energia Elettrica</p><p class="kpi-value mono" style="color:var(--amber);font-size:18px;">${esc(latestSupplier("casaLuce"))}</p><p class="kpi-sub">pi&ugrave; recente</p></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Confronta periodi</h3>
+      <p class="hint" style="margin-top:0;">Periodo A</p>
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="field"><label>Da &ndash; Mese</label><select id="cmpAFromMese">${monthOptions(cmp.aFromMese)}</select></div>
+        <div class="field"><label>Da &ndash; Anno</label><select id="cmpAFromAnno">${yearOptions(cmp.aFromAnno)}</select></div>
+        <div class="field"><label>A &ndash; Mese</label><select id="cmpAToMese">${monthOptions(cmp.aToMese)}</select></div>
+        <div class="field"><label>A &ndash; Anno</label><select id="cmpAToAnno">${yearOptions(cmp.aToAnno)}</select></div>
+      </div>
+      <p class="hint">Periodo B</p>
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="field"><label>Da &ndash; Mese</label><select id="cmpBFromMese">${monthOptions(cmp.bFromMese)}</select></div>
+        <div class="field"><label>Da &ndash; Anno</label><select id="cmpBFromAnno">${yearOptions(cmp.bFromAnno)}</select></div>
+        <div class="field"><label>A &ndash; Mese</label><select id="cmpBToMese">${monthOptions(cmp.bToMese)}</select></div>
+        <div class="field"><label>A &ndash; Anno</label><select id="cmpBToAnno">${yearOptions(cmp.bToAnno)}</select></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th></th><th style="text-align:right;">${labelRange(cmp.aFromAnno,cmp.aFromMese,cmp.aToAnno,cmp.aToMese)}<br><span class="hint" style="font-weight:400;">${totA.count} mesi</span></th><th style="text-align:right;">${labelRange(cmp.bFromAnno,cmp.bFromMese,cmp.bToAnno,cmp.bToMese)}<br><span class="hint" style="font-weight:400;">${totB.count} mesi</span></th><th style="text-align:right;">Differenza</th></tr></thead>
+        <tbody>
+          ${cmpRow("Energia Elettrica","casaLuce",totA.casaLuce, totB.casaLuce)}
+          ${cmpRow("Gas","casaGas",totA.casaGas, totB.casaGas)}
+          ${isCost ? `
+          <tr style="font-weight:700;"><td style="color:#e2e8f0;">Totale</td>
+            <td class="mono" style="text-align:right;color:#e2e8f0;">${fmtEUR(totA.totale)}</td>
+            <td class="mono" style="text-align:right;color:#e2e8f0;">${fmtEUR(totB.totale)}</td>
+            <td class="mono" style="text-align:right;color:${diffTotale>0?'var(--rose)':(diffTotale<0?'var(--emerald)':'var(--muted)')}">${diffTotale===0?"—":(diffTotale>0?"+":"")+fmtEUR(diffTotale)+(diffPct==null?"":` (${diffPct>0?"+":""}${(diffPct*100).toFixed(1)}%)`)}</td>
+          </tr>` : ``}
+        </tbody>
+      </table></div>
+      <p class="hint">Imposta un intervallo "da mese/anno a mese/anno" per ciascun periodo (anche a cavallo di anni diversi, ad es. Giu 2025 &ndash; Ott 2025).</p>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">${isCost ? "Spesa annua per contatore" : "Consumo annuo per contatore"}</h3>
+      <p class="hint" style="margin-top:0;">Se sono disponibili almeno 12 mesi di dati, il valore &egrave; il totale reale degli ultimi 12 mesi (non una media estrapolata). Altrimenti &egrave; una stima annualizzata sui mesi effettivamente disponibili.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Utenza</th><th style="text-align:right;">${isCost?"Spesa ultimi 12 mesi":"Consumo ultimi 12 mesi"}</th><th>Fornitore attuale</th><th style="text-align:right;">${isCost?"Ultimo importo":"Ultimo consumo"}</th></tr></thead>
+        <tbody>
+          ${utenzaRows.map(r=>`<tr>
+            <td style="color:${r.u.color};">${r.u.label}</td>
+            <td class="mono" style="text-align:right;">${fmtByMetric(r.mediaAnnua, metric, r.u.key)}${r.isReale?"":` <span class="hint" style="font-weight:400;">(stima, ${r.count} mesi)</span>`}</td>
+            <td>${r.info ? esc(r.info.fornitore) : "—"}</td>
+            <td class="mono" style="text-align:right;">${r.info ? fmtByMetric(r.info[metric], metric, r.u.key)+" ("+MESI_BREVI[r.info.mese-1]+" '"+String(r.info.anno).slice(2)+")" : "—"}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table></div>
+    </div>
+
+    ${isCost ? `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Andamento mensile dei costi</h3>
+      ${lineChartSVG(chartData, UTENZE, fmtEUR)}
+      ${legendHTML()}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Confronto costi annuali per utenza</h3>
+      ${barChartSVG(yearBars, UTENZE, fmtEUR)}
+      ${legendHTML()}
+    </div>
+    ` : `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Andamento mensile dei consumi elettrici (kWh)</h3>
+      ${lineChartSVG(chartData, ELETTRICO_SERIES, fmtKWh)}
+      ${legendHTML(ELETTRICO_SERIES)}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Andamento mensile dei consumi gas (Smc)</h3>
+      ${lineChartSVG(chartData, GAS_SERIES, fmtSmc)}
+      ${legendHTML(GAS_SERIES)}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Confronto consumi elettrici annuali (kWh)</h3>
+      ${barChartSVG(yearBars, ELETTRICO_SERIES, fmtKWh)}
+      ${legendHTML(ELETTRICO_SERIES)}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Confronto consumi gas annuali (Smc)</h3>
+      ${barChartSVG(yearBars, GAS_SERIES, fmtSmc)}
+      ${legendHTML(GAS_SERIES)}
+    </div>
+    `}
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Energia Elettrica &mdash; confronto anno su anno (${isCost?"&euro;":"kWh"})</h3>
+      ${yoyChartSVG(luceByYear, years, isCost?fmtEUR:fmtKWh)}
+      ${yoyLegendHTML(years)}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Gas &mdash; confronto anno su anno (${isCost?"&euro;":"Smc"})</h3>
+      ${yoyChartSVG(gasByYear, years, isCost?fmtEUR:fmtSmc)}
+      ${yoyLegendHTML(years)}
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Energia Elettrica &mdash; consumo e spesa mensile</h3>
+      <p class="hint" style="margin-top:0;">Due assi: kWh a sinistra (linea piena), &euro; a destra (linea tratteggiata). Se la spesa sale mentre il consumo resta stabile o cala, molto probabilmente la tariffa &egrave; aumentata.</p>
+      ${dualAxisChartSVG(monthlySeriesFor(se,"casaLuce"), "var(--amber)", v=>fmtKWh(v), "var(--violet)")}
+      ${dualAxisLegendHTML("var(--amber)", "Consumo kWh", "var(--violet)")}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Gas &mdash; consumo e spesa mensile</h3>
+      <p class="hint" style="margin-top:0;">Due assi: Smc a sinistra (linea piena), &euro; a destra (linea tratteggiata). Se la spesa sale mentre il consumo resta stabile o cala, molto probabilmente la tariffa &egrave; aumentata.</p>
+      ${dualAxisChartSVG(monthlySeriesFor(se,"casaGas"), "var(--cyan)", v=>fmtSmc(v), "var(--violet)")}
+      ${dualAxisLegendHTML("var(--cyan)", "Consumo Smc", "var(--violet)")}
+    </div>
+
+  `;
+
+  const metricSel = document.getElementById("metricSelect");
+  if(metricSel) metricSel.addEventListener("change", ()=>{ state.metric = metricSel.value; render(); });
+
+  ["cmpAFromMese","cmpAFromAnno","cmpAToMese","cmpAToAnno","cmpBFromMese","cmpBFromAnno","cmpBToMese","cmpBToAnno"].forEach(id=>{
+    const elSel = document.getElementById(id);
+    if(elSel) elSel.addEventListener("change", ()=>{
+      const key = id.replace("cmp","");
+      const stateKey = key.charAt(0).toLowerCase() + key.slice(1);
+      state.compare[stateKey] = Number(elSel.value);
+      render();
+    });
+  });
+}
+
+// calcola valori "rotondi" (1/2/5 x 10^n) per le tacche dell'asse Y, del tipo 100/500/1000/2500...
+function niceStepValue(rough, round){
+  if(rough<=0) return 1;
+  const exp = Math.floor(Math.log10(rough));
+  const frac = rough / Math.pow(10, exp);
+  let niceFrac;
+  if(round){
+    if(frac<1.5) niceFrac=1; else if(frac<3) niceFrac=2; else if(frac<7) niceFrac=5; else niceFrac=10;
+  } else {
+    if(frac<=1) niceFrac=1; else if(frac<=2) niceFrac=2; else if(frac<=5) niceFrac=5; else niceFrac=10;
+  }
+  return niceFrac * Math.pow(10, exp);
+}
+function niceAxisTicks(maxVal, maxTicks){
+  maxTicks = maxTicks || 4;
+  const safeMax = Math.max(maxVal, 1);
+  const step = niceStepValue(safeMax/maxTicks, true);
+  const niceMax = Math.ceil(safeMax/step) * step;
+  const ticks = [];
+  for(let v=0; v<=niceMax+step*0.001; v+=step) ticks.push(Math.round(v*1000)/1000);
+  return { step, niceMax: niceMax||step, ticks: ticks.length?ticks:[0,step] };
+}
+// calcola il padding sinistro necessario in base alla larghezza massima delle etichette, cosi non vengono mai tagliate
+function padForLabels(labels){
+  const maxLen = Math.max(6, ...labels.map(l=>String(l).length));
+  return Math.round(Math.max(46, maxLen*6.4 + 16));
+}
+
+// serie mensile consumo+costo per una singola utenza (indipendente dal toggle spesa/consumi)
+function monthlySeriesFor(se, key){
+  return se.map(e=>({
+    label: `${MESI_BREVI[e.mese-1]} '${String(e.anno).slice(2)}`,
+    consumo: e[key] ? e[key].consumo : null,
+    costo: e[key] ? e[key].costo : null,
+  }));
+}
+
+function dualAxisLegendHTML(consumoColor, consumoLabel, spesaColor){
+  return `<div class="legend">
+    <span><i class="dot" style="background:${consumoColor}"></i>${consumoLabel} (linea continua, asse sinistro)</span>
+    <span><i class="dot" style="background:${spesaColor}"></i>Spesa &euro; (linea tratteggiata, asse destro)</span>
+  </div>`;
+}
+
+// grafico mensile a doppio asse: consumo (asse sx) + spesa (asse dx) per una singola utenza
+function dualAxisChartSVG(data, consumoColor, consumoFmt, spesaColor){
+  const W=680,H=280,padT=14,padB=34;
+  const n=data.length;
+  const consumoVals = data.map(d=>d.consumo).filter(v=>v!=null);
+  const costoVals = data.map(d=>d.costo).filter(v=>v!=null);
+  const leftTicksInfo = niceAxisTicks(Math.max(10, ...consumoVals), 4);
+  const rightTicksInfo = niceAxisTicks(Math.max(10, ...costoVals), 4);
+  const leftLabels = leftTicksInfo.ticks.map(v=>consumoFmt(v));
+  const rightLabels = rightTicksInfo.ticks.map(v=>fmtEUR(v).replace(/,00/,''));
+  const padL = padForLabels(leftLabels);
+  const padR = padForLabels(rightLabels);
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const xAt = i => n<=1 ? padL+plotW/2 : padL + (i/(n-1))*plotW;
+  const leftYAt = v => padT + plotH - (v/leftTicksInfo.niceMax)*plotH;
+  const rightYAt = v => padT + plotH - (v/rightTicksInfo.niceMax)*plotH;
+
+  let grid="", labels="";
+  leftTicksInfo.ticks.forEach((val,gi)=>{
+    const y = leftYAt(val);
+    grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+    labels += `<text x="${padL-8}" y="${y+4}" font-size="10" fill="${consumoColor}" text-anchor="end">${leftLabels[gi]}</text>`;
+  });
+  rightTicksInfo.ticks.forEach((val,gi)=>{
+    const y = rightYAt(val);
+    labels += `<text x="${W-padR+8}" y="${y+4}" font-size="10" fill="${spesaColor}" text-anchor="start">${rightLabels[gi]}</text>`;
+  });
+
+  let xLabels="";
+  data.forEach((d,i)=>{
+    if(n>16 && i%2!==0) return;
+    xLabels += `<text x="${xAt(i)}" y="${H-10}" font-size="9.5" fill="#64748b" text-anchor="middle">${esc(d.label)}</text>`;
+  });
+
+  function buildLine(getVal, yFn, color, dash, tooltipFmt){
+    let path="", points="", drawing=false;
+    data.forEach((d,i)=>{
+      const v = getVal(d);
+      if(v==null){ drawing=false; return; }
+      const x=xAt(i), y=yFn(v);
+      path += (drawing? " L " : " M ") + x.toFixed(1) + " " + y.toFixed(1);
+      drawing = true;
+      points += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${color}"><title>${esc(d.label)}: ${tooltipFmt(v)}</title></circle>`;
+    });
+    const dashAttr = dash ? ` stroke-dasharray="${dash}"` : "";
+    return (path ? `<path d="${path}" fill="none" stroke="${color}" stroke-width="2"${dashAttr}/>` : "") + points;
+  }
+
+  const consumoLine = buildLine(d=>d.consumo, leftYAt, consumoColor, null, consumoFmt);
+  const spesaLine = buildLine(d=>d.costo, rightYAt, spesaColor, "5,4", fmtEUR);
+
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    ${grid}${labels}${xLabels}${consumoLine}${spesaLine}
+  </svg>`;
+}
+
+function legendHTML(seriesList=UTENZE){
+  return `<div class="legend">${seriesList.map(u=>`<span><i class="dot" style="background:${u.color}"></i>${u.label}</span>`).join("")}</div>`;
+}
+
+function lineChartSVG(data, seriesList=UTENZE, valueFmt=fmtEUR){
+  const W=680,H=260,padR=16,padT=14,padB=34;
+  const n=data.length;
+  const allVals = data.flatMap(d=>seriesList.map(u=>d[u.key])).filter(v=>v!=null);
+  const rawMax = Math.max(10, ...allVals);
+  const { ticks, niceMax } = niceAxisTicks(rawMax, 4);
+  const maxV = niceMax;
+  const tickLabels = ticks.map(v=>valueFmt(v).replace(/,00/,''));
+  const padL = padForLabels(tickLabels);
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const xAt = i => n<=1 ? padL+plotW/2 : padL + (i/(n-1))*plotW;
+  const yAt = v => padT + plotH - (v/maxV)*plotH;
+
+  let grid="", labels="";
+  ticks.forEach((val,gi)=>{
+    const y = yAt(val);
+    grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+    labels += `<text x="${padL-8}" y="${y+4}" font-size="10" fill="#64748b" text-anchor="end">${tickLabels[gi]}</text>`;
+  });
+  let xLabels="";
+  data.forEach((d,i)=>{
+    if(n>16 && i%2!==0) return;
+    xLabels += `<text x="${xAt(i)}" y="${H-10}" font-size="9.5" fill="#64748b" text-anchor="middle">${esc(d.label)}</text>`;
+  });
+
+  let series="";
+  seriesList.forEach(u=>{
+    let path="", points="", drawing=false;
+    data.forEach((d,i)=>{
+      const v = d[u.key];
+      if(v==null){ drawing=false; return; }
+      const x=xAt(i), y=yAt(v);
+      path += (drawing? " L " : " M ") + x.toFixed(1) + " " + y.toFixed(1);
+      drawing = true;
+      points += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${u.color}"><title>${esc(u.label)}: ${valueFmt(v)}</title></circle>`;
+    });
+    if(path) series += `<path d="${path}" fill="none" stroke="${u.color}" stroke-width="2"/>`;
+    series += points;
+  });
+
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    ${grid}${labels}${xLabels}${series}
+  </svg>`;
+}
+
+function barChartSVG(yearData, seriesList=UTENZE, valueFmt=fmtEUR){
+  const W=680,H=260,padR=16,padT=14,padB=30;
+  const totals = yearData.map(y=> seriesList.reduce((s,u)=> s+(y[u.key]||0), 0));
+  const rawMax = Math.max(10, ...totals);
+  const { ticks, niceMax } = niceAxisTicks(rawMax, 4);
+  const maxV = niceMax;
+  const tickLabels = ticks.map(v=>valueFmt(v).replace(/,00/,''));
+  const padL = padForLabels(tickLabels);
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const n = yearData.length;
+  const slot = plotW/n;
+  const barW = Math.min(70, slot*0.5);
+
+  let grid="", labels="";
+  ticks.forEach((val,gi)=>{
+    const y = padT+plotH-(val/maxV)*plotH;
+    grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+    labels += `<text x="${padL-8}" y="${y+4}" font-size="10" fill="#64748b" text-anchor="end">${tickLabels[gi]}</text>`;
+  });
+
+  let bars="", xLabels="";
+  yearData.forEach((yd,i)=>{
+    const cx = padL + slot*i + slot/2;
+    let yCursor = padT+plotH;
+    seriesList.forEach(u=>{
+      const v = yd[u.key]||0;
+      const h = (v/maxV)*plotH;
+      const yTop = yCursor - h;
+      bars += `<rect x="${(cx-barW/2).toFixed(1)}" y="${yTop.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="${u.color}"><title>${esc(u.label)} ${yd.anno}: ${valueFmt(v)}</title></rect>`;
+      yCursor = yTop;
+    });
+    xLabels += `<text x="${cx}" y="${H-8}" font-size="11" fill="#94a3b8" text-anchor="middle">${yd.anno}</text>`;
+  });
+
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    ${grid}${labels}${bars}${xLabels}
+  </svg>`;
+}
+
+const YEAR_COLORS = ["var(--violet)","var(--amber)","var(--cyan)","var(--rose)","var(--emerald)"];
+function yearColor(years, y){ return YEAR_COLORS[years.indexOf(y) % YEAR_COLORS.length]; }
+
+function yoyLegendHTML(years){
+  return `<div class="legend">${years.map(y=>`<span><i class="dot" style="background:${yearColor(years,y)}"></i>${y}</span>`).join("")}</div>`;
+}
+
+function yoyChartSVG(seriesByYear, years, valueFmt=fmtEUR){
+  const W=680,H=260,padR=16,padT=14,padB=34;
+  const n=12;
+  const allVals = years.flatMap(y=>seriesByYear[y]||[]).filter(v=>v!=null);
+  const rawMax = Math.max(10, ...allVals);
+  const { ticks, niceMax } = niceAxisTicks(rawMax, 4);
+  const maxV = niceMax;
+  const tickLabels = ticks.map(v=>valueFmt(v).replace(/,00/,''));
+  const padL = padForLabels(tickLabels);
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const xAt = i => padL + (i/(n-1))*plotW;
+  const yAt = v => padT + plotH - (v/maxV)*plotH;
+
+  let grid="", labels="";
+  ticks.forEach((val,gi)=>{
+    const y = yAt(val);
+    grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+    labels += `<text x="${padL-8}" y="${y+4}" font-size="10" fill="#64748b" text-anchor="end">${tickLabels[gi]}</text>`;
+  });
+  let xLabels="";
+  MESI_BREVI.forEach((m,i)=>{
+    xLabels += `<text x="${xAt(i)}" y="${H-10}" font-size="9.5" fill="#64748b" text-anchor="middle">${m}</text>`;
+  });
+
+  let series="";
+  years.forEach(y=>{
+    const color = yearColor(years,y);
+    const vals = seriesByYear[y]||[];
+    let path="", points="", drawing=false;
+    vals.forEach((v,i)=>{
+      if(v==null){ drawing=false; return; }
+      const x=xAt(i), yy=yAt(v);
+      path += (drawing? " L " : " M ") + x.toFixed(1) + " " + yy.toFixed(1);
+      drawing = true;
+      points += `<circle cx="${x.toFixed(1)}" cy="${yy.toFixed(1)}" r="3" fill="${color}"><title>${MESI_BREVI[i]} ${y}: ${valueFmt(v)}</title></circle>`;
+    });
+    if(path) series += `<path d="${path}" fill="none" stroke="${color}" stroke-width="2"/>`;
+    series += points;
+  });
+
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    ${grid}${labels}${xLabels}${series}
+  </svg>`;
+}
+
+// ---------------- bollette tab ----------------
+function renderBollette(se){
+  const el = document.getElementById("main");
+  const f = state.form;
+  const utenzaInfo = UTENZE.find(u=>u.key===f.utenza);
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">+ Carica una nuova bolletta</h3>
+      <div class="form-grid">
+        <div class="field"><label>Utenza</label>
+          <select id="f_utenza">${UTENZE.map(u=>`<option value="${u.key}" ${u.key===f.utenza?"selected":""}>${u.label}</option>`).join("")}</select>
+        </div>
+        <div class="field"><label>Anno</label><input type="number" id="f_anno" value="${f.anno}"></div>
+        <div class="field"><label>Mese</label>
+          <select id="f_mese">${MESI.map((m,i)=>`<option value="${i+1}" ${i+1===Number(f.mese)?"selected":""}>${m}</option>`).join("")}</select>
+        </div>
+        <div class="field"><label>Fornitore</label><input type="text" id="f_fornitore" placeholder="es. FuturEnergy" value="${esc(f.fornitore)}"></div>
+        <div class="field"><label>Consumo (${utenzaInfo.unit})</label><input type="number" id="f_consumo" value="${f.consumo}"></div>
+        <div class="field"><label>Costo (&euro;)</label><input type="number" step="0.01" id="f_costo" value="${f.costo}"></div>
+        <div class="field span-full"><label>Note (opzionale)</label><input type="text" id="f_note" placeholder="es. esclude canone RAI" value="${esc(f.note)}"></div>
+      </div>
+      <div style="margin-top:12px;"><button class="btn btn-primary" id="saveEntryBtn">+ Salva</button></div>
+    </div>
+    <div class="card">
+      <div class="top-actions">
+        <h3 class="section-title" style="margin:0;">Storico bollette</h3>
+        <div id="resetZone">
+          <button class="link-btn" id="askResetBtn">&#128465; Cancella tutto</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>Periodo</th>
+          ${UTENZE.map(u=>`<th style="color:${u.color}">${u.label}</th>`).join("")}
+          <th style="text-align:right;">Totale mese</th>
+        </tr></thead>
+        <tbody>
+          ${se.length===0 ? `<tr><td colspan="4" style="text-align:center;color:#475569;padding:24px 0;">Nessuna bolletta caricata.</td></tr>` :
+            se.map(e=>{
+              const totale = (e.casaLuce?.costo||0)+(e.casaGas?.costo||0);
+              return `<tr>
+                <td style="white-space:nowrap;color:#cbd5e1;">${MESI[e.mese-1]} ${e.anno}</td>
+                ${UTENZE.map(u=>{
+                  const d = e[u.key];
+                  if(!d) return `<td><span class="cell-empty">—</span></td>`;
+                  return `<td>
+                    <div class="mono">${fmtEUR(d.costo)}</div>
+                    <div class="fornitore-line">${esc(d.fornitore)} &middot; ${fmtNum(d.consumo)} ${u.unit}</div>
+                    ${d.note?`<div class="note-line">${esc(d.note)}</div>`:""}
+                    <span class="row-actions">
+                      <button class="icon-btn edit" data-edit="${e.id}|${u.key}">&#9998;</button>
+                      <button class="icon-btn" data-clear="${e.id}|${u.key}">&#10005;</button>
+                    </span>
+                  </td>`;
+                }).join("")}
+                <td class="mono" style="text-align:right;color:#e2e8f0;">${fmtEUR(totale)}</td>
+              </tr>`;
+            }).join("")
+          }
+        </tbody>
+      </table></div>
+    </div>
+  `;
+
+  document.getElementById("f_utenza").addEventListener("change", e=>{ state.form.utenza=e.target.value; render(); });
+  document.getElementById("f_anno").addEventListener("input", e=>{ state.form.anno=e.target.value; });
+  document.getElementById("f_mese").addEventListener("change", e=>{ state.form.mese=e.target.value; });
+  document.getElementById("f_fornitore").addEventListener("input", e=>{ state.form.fornitore=e.target.value; });
+  document.getElementById("f_consumo").addEventListener("input", e=>{ state.form.consumo=e.target.value; });
+  document.getElementById("f_costo").addEventListener("input", e=>{ state.form.costo=e.target.value; });
+  document.getElementById("f_note").addEventListener("input", e=>{ state.form.note=e.target.value; });
+  document.getElementById("saveEntryBtn").addEventListener("click", upsertEntry);
+
+  document.querySelectorAll("[data-edit]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const [id,key] = b.dataset.edit.split("|");
+      const entry = state.entries.find(x=>x.id===id);
+      if(!entry || !entry[key]) return;
+      state.form = { utenza:key, anno:entry.anno, mese:entry.mese, fornitore:entry[key].fornitore, consumo:entry[key].consumo, costo:entry[key].costo, note:entry[key].note||"" };
+      render();
+    });
+  });
+  document.querySelectorAll("[data-clear]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const [id,key] = b.dataset.clear.split("|");
+      state.entries = state.entries.map(e=>{
+        if(e.id!==id) return e;
+        const next = {...e}; delete next[key]; return next;
+      }).filter(e=> e.casaLuce||e.casaGas);
+      persist(); render();
+    });
+  });
+
+  const askBtn = document.getElementById("askResetBtn");
+  if(askBtn){
+    askBtn.addEventListener("click", ()=>{
+      document.getElementById("resetZone").innerHTML = `
+        <div class="confirm-row">
+          <span style="color:#94a3b8;">Confermi?</span>
+          <button class="yes" id="confirmResetYes">S&igrave;, cancella</button>
+          <button class="no" id="confirmResetNo">Annulla</button>
+        </div>`;
+      document.getElementById("confirmResetYes").addEventListener("click", ()=>{ state.entries=[]; persist(); render(); });
+      document.getElementById("confirmResetNo").addEventListener("click", render);
+    });
+  }
+}
+
+function upsertEntry(){
+  const f = state.form;
+  const anno = Number(f.anno), mese = Number(f.mese);
+  if(!anno || !mese || f.fornitore.trim()==="" || f.consumo==="" || f.costo==="") return;
+  const id = `${anno}-${mese}`;
+  const payload = { fornitore:f.fornitore.trim(), consumo:Number(f.consumo), costo:Number(f.costo), note:f.note.trim() };
+  const idx = state.entries.findIndex(e=>e.id===id);
+  if(idx===-1){ state.entries.push({ id, anno, mese, [f.utenza]:payload }); }
+  else { state.entries[idx] = { ...state.entries[idx], [f.utenza]:payload }; }
+  state.form = { ...emptyForm(), utenza:f.utenza, anno:f.anno, mese:f.mese };
+  persist();
+  render();
+}
+
+// ---------------- confronto tab ----------------
+function avgAnnualConsumption(key){
+  const rows = sortedEntries().filter(e=>e[key]);
+  if(!rows.length) return 0;
+  const total = rows.reduce((s,e)=> s+(Number(e[key].consumo)||0), 0);
+  return (total/rows.length)*12;
+}
+
+function renderConfronto(){
+  const el = document.getElementById("main");
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Consumo medio annuo stimato</h3>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
+        ${UTENZE.map(u=>`
+          <div class="card" style="padding:12px;">
+            <p class="kpi-label" style="margin-bottom:4px;">${u.label}</p>
+            <p class="mono" style="font-size:17px;color:${u.color};margin:0;">${fmtNum(avgAnnualConsumption(u.key))} ${u.unit}/anno</p>
+          </div>`).join("")}
+      </div>
+      <p class="hint">Stima calcolata sui mesi effettivamente caricati in &laquo;Bollette&raquo;.</p>
+    </div>
+    <div class="card">
+      <div class="top-actions"><h3 class="section-title" style="margin:0;">Confronta le offerte</h3>
+        <button class="offer-add" id="addOfferBtn">+ Aggiungi offerta</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>Fornitore</th><th>Utenza</th><th>Prezzo energia</th><th>Spread</th><th>Costo fisso/mese</th>
+          <th style="text-align:right;">Stima annua</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${state.offers.map(o=>{
+            const u = UTENZE.find(x=>x.key===o.utenza);
+            const consumo = avgAnnualConsumption(o.utenza);
+            const prezzo = Number(o.prezzo)||0, spread = Number(o.spread)||0, fisso = Number(o.fisso)||0;
+            const stima = (prezzo+spread)*consumo + fisso*12;
+            return `<tr data-offer-row="${o.id}">
+              <td><input type="text" data-of="fornitore" value="${esc(o.fornitore)}" style="width:130px;background:#020617;border:1px solid #334155;border-radius:6px;padding:5px 8px;color:#f1f5f9;"></td>
+              <td><select data-of="utenza" style="background:#020617;border:1px solid #334155;border-radius:6px;padding:5px 8px;color:#f1f5f9;">
+                ${UTENZE.map(x=>`<option value="${x.key}" ${x.key===o.utenza?"selected":""}>${x.label}</option>`).join("")}
+              </select></td>
+              <td><input type="number" step="0.001" data-of="prezzo" placeholder="&euro;/${u.unit}" value="${o.prezzo}" style="width:90px;background:#020617;border:1px solid #334155;border-radius:6px;padding:5px 8px;color:#f1f5f9;"></td>
+              <td><input type="number" step="0.001" data-of="spread" placeholder="0" value="${o.spread}" style="width:75px;background:#020617;border:1px solid #334155;border-radius:6px;padding:5px 8px;color:#f1f5f9;"></td>
+              <td><input type="number" step="0.01" data-of="fisso" placeholder="&euro;" value="${o.fisso}" style="width:75px;background:#020617;border:1px solid #334155;border-radius:6px;padding:5px 8px;color:#f1f5f9;"></td>
+              <td class="mono" style="text-align:right;color:#e2e8f0;">${stima>0?fmtEUR(stima):"—"}</td>
+              <td style="text-align:right;"><button class="icon-btn" data-remove-offer="${o.id}">&#128465;</button></td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table></div>
+      <p class="hint">Stima al prezzo di oggi: per le offerte indicizzate (PUN/PSV) il costo reale varier&agrave; nel tempo.</p>
+    </div>
+  `;
+  document.getElementById("addOfferBtn").addEventListener("click", ()=>{
+    state.offers.push({ id:Date.now(), fornitore:"", utenza:"casaLuce", prezzo:"", spread:"", fisso:"" });
+    render();
+  });
+  document.querySelectorAll("[data-remove-offer]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      state.offers = state.offers.filter(o=> String(o.id)!==b.dataset.removeOffer);
+      render();
+    });
+  });
+  document.querySelectorAll("tr[data-offer-row]").forEach(row=>{
+    const id = Number(row.dataset.offerRow);
+    row.querySelectorAll("[data-of]").forEach(input=>{
+      const field = input.dataset.of;
+      input.addEventListener("input", ()=>{
+        const o = state.offers.find(x=>x.id===id);
+        o[field] = input.value;
+        render();
+        // restore focus after re-render
+        const again = document.querySelector(`tr[data-offer-row="${id}"] [data-of="${field}"]`);
+        if(again){ again.focus(); const v=again.value; again.value=""; again.value=v; }
+      });
+    });
+  });
+}
+
+// ---------------- persistence (export / import Excel) ----------------
+function persist(){
+  state._justSaved = true;
+  document.getElementById("saveIndicator") && (document.getElementById("saveIndicator").innerHTML = "&#10003; salvato");
+  clearTimeout(window.__saveTimer);
+  window.__saveTimer = setTimeout(()=>{ state._justSaved=false; const s=document.getElementById("saveIndicator"); if(s) s.innerHTML=""; }, 1800);
+}
+
+function exportExcel(){
+  const se = sortedEntries();
+  const rows = se.map(e=>{
+    const cl=e.casaLuce, cg=e.casaGas;
+    const totale = (cl?.costo||0)+(cg?.costo||0);
+    const note = [cl?.note,cg?.note].filter(Boolean).join(" | ");
+    return {
+      "Anno": e.anno, "Mese": MESI[e.mese-1],
+      "Fornitore Energia Elettrica": cl?.fornitore||"", "Consumo Energia Elettrica (kWh)": cl?.consumo ?? "", "Costo Energia Elettrica (€)": cl?.costo ?? "",
+      "Fornitore Gas": cg?.fornitore||"", "Consumo Gas (Smc)": cg?.consumo ?? "", "Costo Gas (€)": cg?.costo ?? "",
+      "Costo Totale (€)": Number(totale.toFixed(2)), "Note": note,
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = [{wch:6},{wch:11},{wch:18},{wch:18},{wch:14},{wch:18},{wch:16},{wch:14},{wch:14},{wch:34}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Dati Mensili");
+  XLSX.writeFile(wb, "Cruscotto_Energia_Basilico.xlsx");
+}
+
+function importExcel(file){
+  const reader = new FileReader();
+  reader.onload = evt => {
+    try{
+      const wb = XLSX.read(evt.target.result, { type:"array" });
+      const ws = wb.Sheets["Dati Mensili"] || wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval:"" });
+      const monthIndex = name => MESI.findIndex(m=> m.toLowerCase()===String(name).trim().toLowerCase()) + 1;
+      const newEntries = [];
+      rows.forEach(r=>{
+        const anno = Number(r["Anno"]); const mese = monthIndex(r["Mese"]);
+        if(!anno || !mese) return;
+        const entry = { id:`${anno}-${mese}`, anno, mese };
+        if(r["Fornitore Energia Elettrica"] && r["Costo Energia Elettrica (€)"]!=="") entry.casaLuce = { fornitore:r["Fornitore Energia Elettrica"], consumo:Number(r["Consumo Energia Elettrica (kWh)"])||0, costo:Number(r["Costo Energia Elettrica (€)"])||0, note:"" };
+        else if(r["Fornitore Casa Luce"] && r["Costo Casa Luce (€)"]!=="") entry.casaLuce = { fornitore:r["Fornitore Casa Luce"], consumo:Number(r["Consumo Casa Luce (kWh)"])||0, costo:Number(r["Costo Casa Luce (€)"])||0, note:"" };
+        if(r["Fornitore Gas"] && r["Costo Gas (€)"]!=="") entry.casaGas = { fornitore:r["Fornitore Gas"], consumo:Number(r["Consumo Gas (Smc)"])||0, costo:Number(r["Costo Gas (€)"])||0, note:"" };
+        else if(r["Fornitore Casa Gas"] && r["Costo Casa Gas (€)"]!=="") entry.casaGas = { fornitore:r["Fornitore Casa Gas"], consumo:Number(r["Consumo Casa Gas (Smc)"])||0, costo:Number(r["Costo Casa Gas (€)"])||0, note:"" };
+        if(r["Note"]){
+          if(entry.casaLuce) entry.casaLuce.note = String(r["Note"]).split("|")[0].trim();
+        }
+        if(entry.casaLuce||entry.casaGas) newEntries.push(entry);
+      });
+      if(newEntries.length){
+        state.entries = newEntries;
+        persist();
+        state.tab = "dashboard";
+        render();
+        alert(`Importate ${newEntries.length} righe da "${file.name}".`);
+      } else {
+        alert("Non ho trovato righe valide nel file. Assicurati che sia un export di questo cruscotto.");
+      }
+    } catch(err){
+      alert("Impossibile leggere il file. Assicurati che sia un file .xlsx esportato da questo cruscotto.");
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+document.getElementById("exportBtn").addEventListener("click", exportExcel);
+document.getElementById("importInput").addEventListener("change", e=>{
+  const file = e.target.files[0];
+  if(file) importExcel(file);
+  e.target.value = "";
+});
+
+render();
+</script>
+</body>
+</html>
