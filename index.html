@@ -1583,7 +1583,10 @@ function importExcel(file){
 // ---------------- avvio ----------------
 async function avvia(){
   if(!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY || !window.supabase){ state.phase = "config"; render(); return; }
-  sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  // Accetta anche URL copiati con percorso (es. ".../rest/v1/"): serve solo l'origine del progetto
+  let url = String(CONFIG.SUPABASE_URL).trim();
+  try{ url = new URL(url).origin; }catch(e){}
+  sb = window.supabase.createClient(url, String(CONFIG.SUPABASE_ANON_KEY).trim());
   let ultimoUtente;
   sb.auth.onAuthStateChange((event, session)=>{
     const uid = session && session.user ? session.user.id : null;

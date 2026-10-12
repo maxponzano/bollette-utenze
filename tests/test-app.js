@@ -8,7 +8,7 @@ const { JSDOM } = require("jsdom");
 
 const ROOT = path.join(__dirname, "..");
 const HTML = fs.readFileSync(path.join(ROOT, "index.html"), "utf8")
-  .replace('SUPABASE_URL: ""', 'SUPABASE_URL: "https://test.supabase.co"')
+  .replace('SUPABASE_URL: ""', 'SUPABASE_URL: " https://test.supabase.co/rest/v1/ "')
   .replace('SUPABASE_ANON_KEY: ""', 'SUPABASE_ANON_KEY: "test-key"');
 
 // ---- dati iniziali: gli stessi del seed SQL (Basilico) ----
@@ -105,7 +105,7 @@ function makeSupabase(db, email) {
   return {
     calls,
     otp: [],
-    createClient() { return this; },
+    createClient(url) { this.url = url; return this; },
     from: builder,
     rpc: async (fn) => fn === "is_admin" ? { data: isAdmin(), error: null } : { data: null, error: { message: "rpc?" } },
     auth: {
@@ -163,6 +163,7 @@ if (require.main === module) (async () => {
   setVal(env, "#loginEmail", " Cliente@Test.it ");
   $(env, "#loginForm").dispatchEvent(new env.w.Event("submit", { cancelable: true }));
   await tick();
+  ok("URL Supabase ripulito dal percorso", env.sb.url === "https://test.supabase.co", env.sb.url);
   ok("invia il link all'email normalizzata", env.sb.otp[0] === "cliente@test.it", JSON.stringify(env.sb.otp));
   ok("conferma l'invio", main(env).includes("Link inviato"));
 
