@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cruscotto Costi Energia</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#020617; --panel:#0f172a; --panel-border:#1e293b; --text:#f1f5f9; --muted:#64748b;
+    --amber:#fbbf24; --cyan:#22d3ee; --violet:#a78bfa; --rose:#fb7185; --emerald:#34d399;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;}
+  header{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--panel-border);}
+  .header-inner{max-width:1080px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:10px;min-width:0;}
+  .brand-icon{width:36px;height:36px;border-radius:8px;background:var(--panel);border:1px solid var(--panel-border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+  .brand h1{font-size:16px;font-weight:700;margin:0;letter-spacing:-0.01em;}
+  .brand p{font-size:12px;color:var(--muted);margin:2px 0 0;}
+  .header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .save-indicator{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;min-width:70px;}
+  .user-line{font-size:11.5px;color:var(--muted);}
+  .role-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:5px;background:#1e293b;color:var(--amber);margin-left:6px;}
+  button{font-family:inherit;cursor:pointer;}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;border:none;border-radius:8px;padding:9px 14px;transition:opacity .15s;}
+  .btn:hover{opacity:.88;}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .btn-primary{background:var(--amber);color:#0f172a;}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--panel-border);}
+  .btn-ghost:hover{color:var(--text);background:var(--panel);}
+  .btn-danger{background:transparent;color:var(--rose);border:1px solid #fb718555;}
+  .tabs{max-width:1080px;margin:0 auto;padding:0 20px;display:flex;gap:4px;overflow-x:auto;}
+  .tab-btn{background:none;border:none;color:var(--muted);font-size:13.5px;font-weight:600;padding:10px 12px;border-bottom:2px solid transparent;white-space:nowrap;}
+  .tab-btn.active{color:var(--text);border-bottom-color:var(--amber);}
+  .context-bar{max-width:1080px;margin:0 auto;padding:16px 20px 0;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
+  .context-bar .field{min-width:220px;}
+  main{max-width:1080px;margin:0 auto;padding:24px 20px 60px;}
+  .grid{display:grid;gap:12px;}
+  .grid-kpi{grid-template-columns:repeat(2,1fr);}
+  @media(min-width:820px){.grid-kpi{grid-template-columns:repeat(4,1fr);}}
+  .card{background:var(--panel);border:1px solid var(--panel-border);border-radius:10px;padding:16px;}
+  .kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 8px;}
+  .kpi-value{font-size:26px;font-weight:700;margin:0;}
+  .kpi-sub{font-size:12px;color:var(--muted);margin:4px 0 0;}
+  h3.section-title{font-size:13.5px;font-weight:700;color:#cbd5e1;margin:0 0 14px;}
+  .empty-state{border:1px dashed var(--panel-border);border-radius:10px;padding:50px 20px;text-align:center;color:var(--muted);}
+  .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+  @media(min-width:700px){.form-grid{grid-template-columns:repeat(3,1fr);}}
+  @media(min-width:980px){.form-grid{grid-template-columns:repeat(6,1fr);}}
+  .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px;}
+  .field input, .field select, select{width:100%;background:#020617;border:1px solid #334155;border-radius:7px;padding:9px 10px;color:var(--text);font-size:13.5px;font-family:inherit;}
+  .field input:focus, .field select:focus{outline:2px solid var(--amber);outline-offset:1px;border-color:var(--amber);}
+  .span-2{grid-column:span 2;}
+  .span-full{grid-column:1/-1;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:0 10px 8px 0;border-bottom:1px solid var(--panel-border);}
+  td{padding:9px 10px 9px 0;border-bottom:1px solid #1e293b99;vertical-align:top;}
+  tr.selected td{background:#1e293b55;}
+  .cell-empty{color:#334155;}
+  .fornitore-line{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .note-line{font-size:11px;color:#475569;font-style:italic;margin-top:2px;}
+  .bolletta-item + .bolletta-item{margin-top:8px;padding-top:8px;border-top:1px dashed #1e293b;}
+  .fornitura-tag{font-size:10.5px;color:#94a3b8;background:#1e293b;border-radius:4px;padding:1px 5px;}
+  .row-actions{display:inline-flex;gap:6px;margin-top:3px;}
+  .icon-btn{background:none;border:none;color:#475569;padding:1px;font-size:12px;line-height:1;}
+  .icon-btn:hover{color:var(--rose);}
+  .icon-btn.edit:hover{color:var(--text);}
+  .table-wrap{overflow-x:auto;}
+  .top-actions{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:10px;flex-wrap:wrap;}
+  .link-btn{background:none;border:none;color:var(--muted);font-size:12px;display:inline-flex;align-items:center;gap:5px;padding:0;}
+  .link-btn:hover{color:var(--text);}
+  .offer-add{color:var(--amber);background:none;border:none;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:5px;}
+  .chart-svg{width:100%;height:auto;display:block;}
+  .legend{display:flex;gap:16px;font-size:12px;margin-top:6px;flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;color:var(--muted);}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .hint{font-size:11.5px;color:#475569;margin-top:10px;}
+  .file-btn{display:inline-flex;}
+  .file-btn input[type=file]{display:none;}
+  .login-box{max-width:420px;margin:60px auto;}
+  .msg{font-size:13px;margin-top:12px;}
+  .msg.ok{color:var(--emerald);} .msg.err{color:var(--rose);}
+  .inline-input{background:#020617;border:1px solid #334155;border-radius:6px;padding:5px 8px;color:#f1f5f9;font-family:inherit;font-size:13px;}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#7f1d1d;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:50;max-width:90vw;}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-icon">&#9201;</div>
+      <div style="min-width:0;">
+        <h1>Cruscotto Costi Energia</h1>
+        <p id="brandSub">Accesso riservato</p>
+      </div>
+    </div>
+    <div class="header-actions" id="headerActions"></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+</header>
+<div class="context-bar" id="contextBar"></div>
+<main id="main"></main>
+
+<script>
+// =====================================================================
+// CONFIGURAZIONE — incolla qui i dati del tuo progetto Supabase
+// (Supabase > Project Settings > API). La chiave "anon" è pubblica per
+// progetto: la protezione dei dati è data dalle regole RLS del database.
+// =====================================================================
+const CONFIG = {
+  SUPABASE_URL: "",
+  SUPABASE_ANON_KEY: "",
+};
+
+const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+const MESI_BREVI = ["Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"];
+// Le chiavi storiche casaLuce/casaGas restano: tutta la dashboard ragiona su queste.
+const UTENZE = [
+  { key:"casaLuce", tipo:"luce", label:"Energia Elettrica", unit:"kWh", color:"var(--amber)", rgb:"251,191,36" },
+  { key:"casaGas", tipo:"gas", label:"Gas", unit:"Smc", color:"var(--cyan)", rgb:"34,211,238" },
+];
+const ELETTRICO_SERIES = UTENZE.filter(u=>u.key!=="casaGas");
+const GAS_SERIES = UTENZE.filter(u=>u.key==="casaGas");
+const KEY_BY_TIPO = { luce:"casaLuce", gas:"casaGas" };
+const UTENZA_BY_TIPO = { luce:UTENZE[0], gas:UTENZE[1] };
+
+function emptyCompare(){ return { aFromAnno:null, aFromMese:null, aToAnno:null, aToMese:null, bFromAnno:null, bFromMese:null, bToAnno:null, bToMese:null }; }
+
+let sb = null;
+let state = {
+  phase: "loading",            // loading | config | login | noaccess | app
+  session: null,
+  isAdmin: false,
+  clienti: [],
+  clienteId: null,
+  forniture: [],
+  bollette: [],
+  offers: [],
+  accessi: [],
+  fornituraFiltro: "",         // "" = tutte
+  entries: [],                 // calcolate da bollette + forniture (vedi buildEntries)
+  tab: "dashboard",
+  form: null,
+  formFornitura: null,
+  formCliente: null,
+  editClienteId: null,
+  compare: emptyCompare(),
+  metric: "costo",
+  loginMsg: null,
+};
+
+function emptyForm(){
+  const now = new Date();
+  return { id:null, fornitura_id:"", anno:now.getFullYear(), mese: now.getMonth()+1, fornitore:"", consumo:"", costo:"", note:"" };
+}
+function emptyFornituraForm(){ return { id:null, tipo:"luce", codice:"", sede:"", potenza_kw:"", offerta:"", attiva:true }; }
+function emptyClienteForm(){ return { nome:"", indirizzo:"", note:"" }; }
+
+function fmtEUR(v){
+  if(v==null) return "—";
+  const neg = v<0, abs = Math.abs(v);
+  const parts = abs.toFixed(2).split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return (neg?"-":"") + parts[0] + "," + parts[1] + " €";
+}
+function fmtNum(v,d){
+  if(v==null) return "—";
+  d = d||0;
+  const neg = v<0, abs = Math.abs(v);
+  const str = abs.toFixed(d);
+  const parts = str.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return (neg?"-":"") + (d>0 ? parts.join(",") : parts[0]);
+}
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function sortedEntries(){ return [...state.entries].sort((a,b)=> a.anno-b.anno || a.mese-b.mese); }
+function monthsWithDataForYear(se, year){ return new Set(se.filter(e=>e.anno===year).map(e=>e.mese)); }
+function commonMonths(se, yearA, yearB){
+  const a = monthsWithDataForYear(se, yearA), b = monthsWithDataForYear(se, yearB);
+  return [...a].filter(m=>b.has(m)).sort((x,y)=>x-y);
+}
+function monthRangeLabelFor(months){
+  if(!months.length) return null;
+  return months.length===1 ? MESI_BREVI[months[0]-1] : `${MESI_BREVI[months[0]-1]}-${MESI_BREVI[months[months.length-1]-1]}`;
+}
+
+// ---------------- dashboard ----------------
+const UNIT_BY_KEY = { casaLuce:"kWh", casaGas:"Smc" };
+function fmtByMetric(v, metric, key){
+  if(v==null) return "—";
+  return metric==="costo" ? fmtEUR(v) : `${fmtNum(v)} ${UNIT_BY_KEY[key]}`;
+}
+function totalForYear(se, y, metric="costo"){ return se.filter(e=>e.anno===y).reduce((s,e)=> s+(e.casaLuce?.[metric]||0)+(e.casaGas?.[metric]||0), 0); }
+function latestSupplierInfo(se, key){
+  for(let i=se.length-1;i>=0;i--){
+    if(se[i][key]) return { fornitore: se[i][key].fornitore, anno:se[i].anno, mese:se[i].mese, costo:se[i][key].costo, consumo:se[i][key].consumo };
+  }
+  return null;
+}
+function periodEntries(se, anno, mese){
+  return se.filter(e=> e.anno===anno && (mese===""||mese==null || e.mese===Number(mese)));
+}
+function periodTotals(se, anno, mese, metric="costo"){
+  const rows = periodEntries(se, anno, mese);
+  const sum = k => rows.reduce((s,e)=> s+(e[k]?.[metric]||0), 0);
+  return { casaLuce:sum("casaLuce"), casaGas:sum("casaGas"), totale: sum("casaLuce")+sum("casaGas"), count: rows.length };
+}
+function rangeEntries(se, fromAnno, fromMese, toAnno, toMese){
+  const from = Number(fromAnno)*12 + Number(fromMese);
+  const to = Number(toAnno)*12 + Number(toMese);
+  const lo = Math.min(from,to), hi = Math.max(from,to);
+  return se.filter(e=>{ const k = e.anno*12 + e.mese; return k>=lo && k<=hi; });
+}
+function rangeTotals(se, fromAnno, fromMese, toAnno, toMese, metric="costo"){
+  const rows = rangeEntries(se, fromAnno, fromMese, toAnno, toMese);
+  const sum = k => rows.reduce((s,e)=> s+(e[k]?.[metric]||0), 0);
+  const casaLuce=sum("casaLuce"), casaGas=sum("casaGas");
+  return { casaLuce, casaGas, totale: casaLuce+casaGas, count: rows.length };
+}
+
+function renderDashboard(se){
+  const el = document.getElementById("main");
+  if(se.length===0){
+    el.innerHTML = `<div class="empty-state"><div style="font-size:28px;margin-bottom:8px;">&#9201;</div>
+      <p style="color:#cbd5e1;font-weight:600;margin:0;">Nessuna bolletta ancora registrata</p>
+      <p style="margin:6px 0 0;">${state.isAdmin ? "Vai su &laquo;Bollette&raquo; per aggiungere la prima lettura." : "I dati compariranno qui appena caricati."}</p></div>`;
+    return;
+  }
+  const metric = state.metric || "costo";
+  const isCost = metric==="costo";
+  const fmtKWh = v => `${fmtNum(v)} kWh`;
+  const fmtSmc = v => `${fmtNum(v)} Smc`;
+  const varText = pct => pct==null?"—":(pct>0?"+":"")+(pct*100).toFixed(1)+"%";
+  const varColor = pct => pct==null?'var(--muted)':(pct>0?'var(--rose)':'var(--emerald)');
+
+  const years = [...new Set(se.map(e=>e.anno))].sort();
+  const latestYear = years[years.length-1];
+  const prevYear = latestYear-1;
+  const cutoffMeseKpi = se[se.length-1].mese;
+  const sumRows = (rows,key,m) => rows.reduce((s,e)=> s+(e[key]?.[m]||0), 0);
+  const rowsLatestRange = se.filter(e=>e.anno===latestYear && e.mese<=cutoffMeseKpi);
+  const commonMonthsKpi = commonMonths(se, latestYear, prevYear);
+  const rowsLatestCommon = se.filter(e=>e.anno===latestYear && commonMonthsKpi.includes(e.mese));
+  const rowsPrevCommon = se.filter(e=>e.anno===prevYear && commonMonthsKpi.includes(e.mese));
+  const cmpRangeLabel = monthRangeLabelFor(commonMonthsKpi);
+  const totalLatest = sumRows(rowsLatestRange,"casaLuce","costo")+sumRows(rowsLatestRange,"casaGas","costo");
+  const totalLatestCommon = sumRows(rowsLatestCommon,"casaLuce","costo")+sumRows(rowsLatestCommon,"casaGas","costo");
+  const totalPrevCommon = sumRows(rowsPrevCommon,"casaLuce","costo")+sumRows(rowsPrevCommon,"casaGas","costo");
+  const pct = (commonMonthsKpi.length && totalPrevCommon) ? (totalLatestCommon-totalPrevCommon)/totalPrevCommon : null;
+  const eeCostLatest = sumRows(rowsLatestRange,"casaLuce","costo");
+  const eeCostLatestCommon = sumRows(rowsLatestCommon,"casaLuce","costo");
+  const eeCostPrevCommon = sumRows(rowsPrevCommon,"casaLuce","costo");
+  const pctEECost = (commonMonthsKpi.length && eeCostPrevCommon) ? (eeCostLatestCommon-eeCostPrevCommon)/eeCostPrevCommon : null;
+  const gasCostLatest = sumRows(rowsLatestRange,"casaGas","costo");
+  const gasCostLatestCommon = sumRows(rowsLatestCommon,"casaGas","costo");
+  const gasCostPrevCommon = sumRows(rowsPrevCommon,"casaGas","costo");
+  const pctGasCost = (commonMonthsKpi.length && gasCostPrevCommon) ? (gasCostLatestCommon-gasCostPrevCommon)/gasCostPrevCommon : null;
+  const elettricoLatest = sumRows(rowsLatestRange,"casaLuce","consumo");
+  const elettricoLatestCommon = sumRows(rowsLatestCommon,"casaLuce","consumo");
+  const elettricoPrevCommon = sumRows(rowsPrevCommon,"casaLuce","consumo");
+  const pctElettrico = (commonMonthsKpi.length && elettricoPrevCommon) ? (elettricoLatestCommon-elettricoPrevCommon)/elettricoPrevCommon : null;
+  const gasLatest = sumRows(rowsLatestRange,"casaGas","consumo");
+  const gasLatestCommon = sumRows(rowsLatestCommon,"casaGas","consumo");
+  const gasPrevCommon = sumRows(rowsPrevCommon,"casaGas","consumo");
+  const pctGas = (commonMonthsKpi.length && gasPrevCommon) ? (gasLatestCommon-gasPrevCommon)/gasPrevCommon : null;
+  const latestSupplier = key => { const info = latestSupplierInfo(se, key); return info ? info.fornitore : "—"; };
+
+  // Variazione EE: sempre confronto tra la bolletta Energia Elettrica del mese piu' recente e lo stesso mese dell'anno precedente
+  const currentMonthEntry = se[se.length-1];
+  const currentEECost = currentMonthEntry.casaLuce ? currentMonthEntry.casaLuce.costo : null;
+  const prevYearMonthEntry = se.find(e=>e.anno===currentMonthEntry.anno-1 && e.mese===currentMonthEntry.mese);
+  const prevEECost = prevYearMonthEntry && prevYearMonthEntry.casaLuce ? prevYearMonthEntry.casaLuce.costo : null;
+  const pctEEMonth = (prevEECost!=null && prevEECost>0 && currentEECost!=null) ? (currentEECost-prevEECost)/prevEECost : null;
+  const eeMonthLabel = `${MESI_BREVI[currentMonthEntry.mese-1]} '${String(currentMonthEntry.anno).slice(2)}`;
+
+  // init compare defaults on first render: same calendar months present in both the latest year and the previous year (so the comparison is always apples-to-apples)
+  if(state.compare.aFromAnno==null || state.compare.bFromAnno==null){
+    const latestYearForCmp = years[years.length-1];
+    const prevYearForCmp = latestYearForCmp - 1;
+    const monthsLatest = new Set(se.filter(e=>e.anno===latestYearForCmp).map(e=>e.mese));
+    const monthsPrev = new Set(se.filter(e=>e.anno===prevYearForCmp).map(e=>e.mese));
+    const commonMonths = [...monthsLatest].filter(m=>monthsPrev.has(m));
+    let bFromAnno, bFromMese, bToAnno, bToMese, aFromAnno, aFromMese, aToAnno, aToMese;
+    if(commonMonths.length){
+      bFromMese = Math.min(...commonMonths); bToMese = Math.max(...commonMonths);
+      bFromAnno = latestYearForCmp; bToAnno = latestYearForCmp;
+      aFromMese = bFromMese; aToMese = bToMese;
+      aFromAnno = prevYearForCmp; aToAnno = prevYearForCmp;
+    } else {
+      // no overlapping months between the two years: fall back to the latest month vs the same month a year earlier
+      const lastEntry = se[se.length-1];
+      bFromAnno = bToAnno = lastEntry.anno; bFromMese = bToMese = lastEntry.mese;
+      aFromAnno = aToAnno = lastEntry.anno - 1; aFromMese = aToMese = lastEntry.mese;
+    }
+    Object.assign(state.compare, { aFromAnno, aFromMese, aToAnno, aToMese, bFromAnno, bFromMese, bToAnno, bToMese });
+  }
+
+  const chartData = se.map(e=>({
+    label: `${MESI_BREVI[e.mese-1]} '${String(e.anno).slice(2)}`,
+    casaLuce: e.casaLuce? e.casaLuce[metric] : null,
+    casaGas: e.casaGas? e.casaGas[metric] : null,
+  }));
+  const yearBars = years.map(y=>{
+    const rows = se.filter(e=>e.anno===y);
+    const sum = k => sumRows(rows,k,metric);
+    return { anno:y, casaLuce:sum("casaLuce"), casaGas:sum("casaGas") };
+  });
+
+  // yearly totals with YoY — limited a mese<=cutoffMese per un confronto equo tra anni
+  const lastEntry = se[se.length-1];
+  const cutoffMese = lastEntry.mese;
+  const mesiLatestConDati = rowsLatestRange.map(e=>e.mese);
+  const minMeseLatest = mesiLatestConDati.length ? Math.min(...mesiLatestConDati) : cutoffMese;
+  const monthRangeLabel = minMeseLatest===cutoffMese ? MESI_BREVI[cutoffMese-1] : `${MESI_BREVI[minMeseLatest-1]}-${MESI_BREVI[cutoffMese-1]}`;
+  const yoyOf = (cur,prev)=> (prev!=null && prev>0) ? (cur-prev)/prev : null;
+  const yearlyRows = years.map((y,i)=>{
+    const rows = se.filter(e=>e.anno===y && e.mese<=cutoffMese);
+    const casaLuce = sumRows(rows,"casaLuce",metric), casaGas = sumRows(rows,"casaGas",metric);
+    const mesiPresenti = rows.map(e=>e.mese);
+    const rangeLabel = mesiPresenti.length ? (Math.min(...mesiPresenti)===Math.max(...mesiPresenti) ? MESI_BREVI[Math.min(...mesiPresenti)-1] : `${MESI_BREVI[Math.min(...mesiPresenti)-1]}&ndash;${MESI_BREVI[Math.max(...mesiPresenti)-1]}`) : "—";
+    const prevY = years[i-1];
+    let prevCasaLuce=null, prevCasaGas=null;
+    if(prevY!=null){
+      const commonMonthsYear = commonMonths(se, y, prevY);
+      const rowsCommon = se.filter(e=>e.anno===y && commonMonthsYear.includes(e.mese));
+      const prevRowsCommon = se.filter(e=>e.anno===prevY && commonMonthsYear.includes(e.mese));
+      var casaLuceCommon = sumRows(rowsCommon,"casaLuce",metric), casaGasCommon = sumRows(rowsCommon,"casaGas",metric);
+      prevCasaLuce = commonMonthsYear.length ? sumRows(prevRowsCommon,"casaLuce",metric) : null;
+      prevCasaGas = commonMonthsYear.length ? sumRows(prevRowsCommon,"casaGas",metric) : null;
+    }
+    const totale = isCost ? casaLuce+casaGas : null;
+    const totaleCommon = (isCost && prevY!=null && casaLuceCommon!=null) ? casaLuceCommon+casaGasCommon : null;
+    const prevTotale = isCost && prevY!=null && prevCasaLuce!=null ? prevCasaLuce+prevCasaGas : null;
+    return {
+      anno:y, casaLuce, casaGas, totale, rangeLabel,
+      yoy: isCost ? yoyOf(totaleCommon, prevTotale) : null,
+      yoyCasaLuce: yoyOf(casaLuceCommon, prevCasaLuce), yoyCasaGas: yoyOf(casaGasCommon, prevCasaGas),
+    };
+  });
+
+  // per-utenza: spesa/consumo annuo per contatore
+  // Se sono disponibili almeno 12 mesi di dati, usa il totale REALE degli ultimi 12 mesi
+  // (evita la distorsione della media estrapolata, che pesa due volte i mesi presenti sia nell'anno
+  // precedente sia in quello corrente, es. giugno/luglio se si hanno 13-23 mesi di storico)
+  const utenzaRows = UTENZE.map(u=>{
+    const rows = se.filter(e=>e[u.key]).sort((a,b)=> a.anno-b.anno || a.mese-b.mese);
+    const totale = rows.reduce((s,e)=> s+(e[u.key][metric]||0), 0);
+    const isReale = rows.length >= 12;
+    const rowsAnnue = isReale ? rows.slice(-12) : rows;
+    const mediaAnnua = rowsAnnue.length ? rowsAnnue.reduce((s,e)=> s+(e[u.key][metric]||0), 0) * (isReale?1:12/rowsAnnue.length) : 0;
+    const info = latestSupplierInfo(se, u.key);
+    return { u, totale, mediaAnnua, isReale, count:rows.length, info };
+  });
+
+  // year-over-year monthly series (Gen-Dic) for Energia Elettrica e Gas
+  const monthsIdx = Array.from({length:12}, (_,i)=>i+1);
+  const luceByYear = {}, gasByYear = {};
+  years.forEach(y=>{
+    luceByYear[y] = monthsIdx.map(m=>{
+      const entry = se.find(e=>e.anno===y && e.mese===m);
+      if(!entry || !entry.casaLuce) return null;
+      return entry.casaLuce[metric];
+    });
+    gasByYear[y] = monthsIdx.map(m=>{
+      const entry = se.find(e=>e.anno===y && e.mese===m);
+      if(!entry || !entry.casaGas) return null;
+      return entry.casaGas[metric];
+    });
+  });
+
+  // compare tool (period ranges: da mese/anno a mese/anno)
+  const cmp = state.compare;
+  const monthOptions = (selVal) => MESI.map((m,i)=>`<option value="${i+1}" ${Number(selVal)===i+1?"selected":""}>${m}</option>`).join("");
+  const allYearsExt = (()=>{ const s=new Set(years); s.add(years[0]-1); s.add(years[years.length-1]+1); return [...s].sort(); })();
+  const yearOptions = (selVal) => allYearsExt.map(y=>`<option value="${y}" ${Number(selVal)===y?"selected":""}>${y}</option>`).join("");
+  const totA = rangeTotals(se, cmp.aFromAnno, cmp.aFromMese, cmp.aToAnno, cmp.aToMese, metric);
+  const totB = rangeTotals(se, cmp.bFromAnno, cmp.bFromMese, cmp.bToAnno, cmp.bToMese, metric);
+  const diffTotale = totB.totale - totA.totale;
+  const diffPct = totA.totale ? diffTotale/totA.totale : null;
+  const labelRange = (fromAnno,fromMese,toAnno,toMese)=> `${MESI_BREVI[Number(fromMese)-1]} ${fromAnno} &ndash; ${MESI_BREVI[Number(toMese)-1]} ${toAnno}`;
+  const cmpRow = (label,key,a,b) => {
+    const d = b-a; const p = a? d/a : null;
+    const fmt = v => fmtByMetric(v, metric, key);
+    return `<tr><td style="color:#cbd5e1;">${label}</td>
+      <td class="mono" style="text-align:right;">${fmt(a)}</td>
+      <td class="mono" style="text-align:right;">${fmt(b)}</td>
+      <td class="mono" style="text-align:right;color:${d>0?'var(--rose)':(d<0?'var(--emerald)':'var(--muted)')}">${d===0?"—":(d>0?"+":"")+fmt(d)+(p==null?"":` (${p>0?"+":""}${(p*100).toFixed(1)}%)`)}</td>
+    </tr>`;
+  };
+
+  const metricSelectHTML = `
+    <div class="card" style="margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <label for="metricSelect" style="color:#94a3b8;font-size:13px;font-weight:600;">Visualizza dati e grafici per:</label>
+      <select id="metricSelect" style="max-width:260px;">
+        <option value="costo" ${isCost?"selected":""}>Spesa (€)</option>
+        <option value="consumo" ${!isCost?"selected":""}>Consumi (kWh / Smc)</option>
+      </select>
+    </div>`;
+
+  el.innerHTML = `
+    ${metricSelectHTML}
+    <div class="grid grid-kpi" style="margin-bottom:16px;">
+      ${isCost ? `
+      <div class="card"><p class="kpi-label">Spesa EE ${latestYear} (${monthRangeLabel})</p><p class="kpi-value mono" style="color:var(--amber)">${fmtEUR(eeCostLatest)}</p><p class="kpi-sub" style="color:${varColor(pctEECost)}">${pctEECost==null?"n/d":varText(pctEECost)} vs ${prevYear}${cmpRangeLabel?` (${cmpRangeLabel})`:""}</p></div>
+      <div class="card"><p class="kpi-label">Spesa Gas ${latestYear} (${monthRangeLabel})</p><p class="kpi-value mono" style="color:var(--cyan)">${fmtEUR(gasCostLatest)}</p><p class="kpi-sub" style="color:${varColor(pctGasCost)}">${pctGasCost==null?"n/d":varText(pctGasCost)} vs ${prevYear}${cmpRangeLabel?` (${cmpRangeLabel})`:""}</p></div>
+      ` : `
+      <div class="card"><p class="kpi-label">Consumo Elettrico ${latestYear} (${monthRangeLabel})</p><p class="kpi-value mono" style="color:var(--amber)">${fmtKWh(elettricoLatest)}</p><p class="kpi-sub" style="color:${varColor(pctElettrico)}">${pctElettrico==null?"n/d":varText(pctElettrico)} vs ${prevYear}${cmpRangeLabel?` (${cmpRangeLabel})`:""}</p></div>
+      <div class="card"><p class="kpi-label">Consumo Gas ${latestYear} (${monthRangeLabel})</p><p class="kpi-value mono" style="color:var(--cyan)">${fmtSmc(gasLatest)}</p><p class="kpi-sub" style="color:${varColor(pctGas)}">${pctGas==null?"n/d":varText(pctGas)} vs ${prevYear}${cmpRangeLabel?` (${cmpRangeLabel})`:""}</p></div>
+      `}
+      <div class="card"><p class="kpi-label">Variazione Bolletta EE (${eeMonthLabel} vs ${prevYear})</p><p class="kpi-value mono" style="color:${varColor(pctEEMonth)}">${varText(pctEEMonth)}</p><p class="kpi-sub">${pctEEMonth==null?"dato non disponibile":(pctEEMonth>0?"in aumento":"in calo")}</p></div>
+      <div class="card"><p class="kpi-label">Fornitore Energia Elettrica</p><p class="kpi-value mono" style="color:var(--amber);font-size:18px;">${esc(latestSupplier("casaLuce"))}</p><p class="kpi-sub">pi&ugrave; recente</p></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Confronta periodi</h3>
+      <p class="hint" style="margin-top:0;">Periodo A</p>
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="field"><label>Da &ndash; Mese</label><select id="cmpAFromMese">${monthOptions(cmp.aFromMese)}</select></div>
+        <div class="field"><label>Da &ndash; Anno</label><select id="cmpAFromAnno">${yearOptions(cmp.aFromAnno)}</select></div>
+        <div class="field"><label>A &ndash; Mese</label><select id="cmpAToMese">${monthOptions(cmp.aToMese)}</select></div>
+        <div class="field"><label>A &ndash; Anno</label><select id="cmpAToAnno">${yearOptions(cmp.aToAnno)}</select></div>
+      </div>
+      <p class="hint">Periodo B</p>
+      <div class="form-grid" style="margin-bottom:14px;">
+        <div class="field"><label>Da &ndash; Mese</label><select id="cmpBFromMese">${monthOptions(cmp.bFromMese)}</select></div>
+        <div class="field"><label>Da &ndash; Anno</label><select id="cmpBFromAnno">${yearOptions(cmp.bFromAnno)}</select></div>
+        <div class="field"><label>A &ndash; Mese</label><select id="cmpBToMese">${monthOptions(cmp.bToMese)}</select></div>
+        <div class="field"><label>A &ndash; Anno</label><select id="cmpBToAnno">${yearOptions(cmp.bToAnno)}</select></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th></th><th style="text-align:right;">${labelRange(cmp.aFromAnno,cmp.aFromMese,cmp.aToAnno,cmp.aToMese)}<br><span class="hint" style="font-weight:400;">${totA.count} mesi</span></th><th style="text-align:right;">${labelRange(cmp.bFromAnno,cmp.bFromMese,cmp.bToAnno,cmp.bToMese)}<br><span class="hint" style="font-weight:400;">${totB.count} mesi</span></th><th style="text-align:right;">Differenza</th></tr></thead>
+        <tbody>
+          ${cmpRow("Energia Elettrica","casaLuce",totA.casaLuce, totB.casaLuce)}
+          ${cmpRow("Gas","casaGas",totA.casaGas, totB.casaGas)}
+          ${isCost ? `
+          <tr style="font-weight:700;"><td style="color:#e2e8f0;">Totale</td>
+            <td class="mono" style="text-align:right;color:#e2e8f0;">${fmtEUR(totA.totale)}</td>
+            <td class="mono" style="text-align:right;color:#e2e8f0;">${fmtEUR(totB.totale)}</td>
+            <td class="mono" style="text-align:right;color:${diffTotale>0?'var(--rose)':(diffTotale<0?'var(--emerald)':'var(--muted)')}">${diffTotale===0?"—":(diffTotale>0?"+":"")+fmtEUR(diffTotale)+(diffPct==null?"":` (${diffPct>0?"+":""}${(diffPct*100).toFixed(1)}%)`)}</td>
+          </tr>` : ``}
+        </tbody>
+      </table></div>
+      <p class="hint">Imposta un intervallo "da mese/anno a mese/anno" per ciascun periodo (anche a cavallo di anni diversi, ad es. Giu 2025 &ndash; Ott 2025).</p>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">${isCost ? "Spesa annua per contatore" : "Consumo annuo per contatore"}</h3>
+      <p class="hint" style="margin-top:0;">Se sono disponibili almeno 12 mesi di dati, il valore &egrave; il totale reale degli ultimi 12 mesi (non una media estrapolata). Altrimenti &egrave; una stima annualizzata sui mesi effettivamente disponibili.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Utenza</th><th style="text-align:right;">${isCost?"Spesa ultimi 12 mesi":"Consumo ultimi 12 mesi"}</th><th>Fornitore attuale</th><th style="text-align:right;">${isCost?"Ultimo importo":"Ultimo consumo"}</th></tr></thead>
+        <tbody>
+          ${utenzaRows.map(r=>`<tr>
+            <td style="color:${r.u.color};">${r.u.label}</td>
+            <td class="mono" style="text-align:right;">${fmtByMetric(r.mediaAnnua, metric, r.u.key)}${r.isReale?"":` <span class="hint" style="font-weight:400;">(stima, ${r.count} mesi)</span>`}</td>
+            <td>${r.info ? esc(r.info.fornitore) : "—"}</td>
+            <td class="mono" style="text-align:right;">${r.info ? fmtByMetric(r.info[metric], metric, r.u.key)+" ("+MESI_BREVI[r.info.mese-1]+" '"+String(r.info.anno).slice(2)+")" : "—"}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table></div>
+    </div>
+
+    ${isCost ? `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Andamento mensile dei costi</h3>
+      ${lineChartSVG(chartData, UTENZE, fmtEUR)}
+      ${legendHTML()}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Confronto costi annuali per utenza</h3>
+      ${barChartSVG(yearBars, UTENZE, fmtEUR)}
+      ${legendHTML()}
+    </div>
+    ` : `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Andamento mensile dei consumi elettrici (kWh)</h3>
+      ${lineChartSVG(chartData, ELETTRICO_SERIES, fmtKWh)}
+      ${legendHTML(ELETTRICO_SERIES)}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Andamento mensile dei consumi gas (Smc)</h3>
+      ${lineChartSVG(chartData, GAS_SERIES, fmtSmc)}
+      ${legendHTML(GAS_SERIES)}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Confronto consumi elettrici annuali (kWh)</h3>
+      ${barChartSVG(yearBars, ELETTRICO_SERIES, fmtKWh)}
+      ${legendHTML(ELETTRICO_SERIES)}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Confronto consumi gas annuali (Smc)</h3>
+      ${barChartSVG(yearBars, GAS_SERIES, fmtSmc)}
+      ${legendHTML(GAS_SERIES)}
+    </div>
+    `}
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Energia Elettrica &mdash; confronto anno su anno (${isCost?"&euro;":"kWh"})</h3>
+      ${yoyChartSVG(luceByYear, years, isCost?fmtEUR:fmtKWh)}
+      ${yoyLegendHTML(years)}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Gas &mdash; confronto anno su anno (${isCost?"&euro;":"Smc"})</h3>
+      ${yoyChartSVG(gasByYear, years, isCost?fmtEUR:fmtSmc)}
+      ${yoyLegendHTML(years)}
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Energia Elettrica &mdash; consumo e spesa mensile</h3>
+      <p class="hint" style="margin-top:0;">Due assi: kWh a sinistra (linea piena), &euro; a destra (linea tratteggiata). Se la spesa sale mentre il consumo resta stabile o cala, molto probabilmente la tariffa &egrave; aumentata.</p>
+      ${dualAxisChartSVG(monthlySeriesFor(se,"casaLuce"), "var(--amber)", v=>fmtKWh(v), "var(--violet)")}
+      ${dualAxisLegendHTML("var(--amber)", "Consumo kWh", "var(--violet)")}
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Gas &mdash; consumo e spesa mensile</h3>
+      <p class="hint" style="margin-top:0;">Due assi: Smc a sinistra (linea piena), &euro; a destra (linea tratteggiata). Se la spesa sale mentre il consumo resta stabile o cala, molto probabilmente la tariffa &egrave; aumentata.</p>
+      ${dualAxisChartSVG(monthlySeriesFor(se,"casaGas"), "var(--cyan)", v=>fmtSmc(v), "var(--violet)")}
+      ${dualAxisLegendHTML("var(--cyan)", "Consumo Smc", "var(--violet)")}
+    </div>
+
+  `;
+
+  const metricSel = document.getElementById("metricSelect");
+  if(metricSel) metricSel.addEventListener("change", ()=>{ state.metric = metricSel.value; render(); });
+
+  ["cmpAFromMese","cmpAFromAnno","cmpAToMese","cmpAToAnno","cmpBFromMese","cmpBFromAnno","cmpBToMese","cmpBToAnno"].forEach(id=>{
+    const elSel = document.getElementById(id);
+    if(elSel) elSel.addEventListener("change", ()=>{
+      const key = id.replace("cmp","");
+      const stateKey = key.charAt(0).toLowerCase() + key.slice(1);
+      state.compare[stateKey] = Number(elSel.value);
+      render();
+    });
+  });
+}
+
+// calcola valori "rotondi" (1/2/5 x 10^n) per le tacche dell'asse Y, del tipo 100/500/1000/2500...
+function niceStepValue(rough, round){
+  if(rough<=0) return 1;
+  const exp = Math.floor(Math.log10(rough));
+  const frac = rough / Math.pow(10, exp);
+  let niceFrac;
+  if(round){
+    if(frac<1.5) niceFrac=1; else if(frac<3) niceFrac=2; else if(frac<7) niceFrac=5; else niceFrac=10;
+  } else {
+    if(frac<=1) niceFrac=1; else if(frac<=2) niceFrac=2; else if(frac<=5) niceFrac=5; else niceFrac=10;
+  }
+  return niceFrac * Math.pow(10, exp);
+}
+function niceAxisTicks(maxVal, maxTicks){
+  maxTicks = maxTicks || 4;
+  const safeMax = Math.max(maxVal, 1);
+  const step = niceStepValue(safeMax/maxTicks, true);
+  const niceMax = Math.ceil(safeMax/step) * step;
+  const ticks = [];
+  for(let v=0; v<=niceMax+step*0.001; v+=step) ticks.push(Math.round(v*1000)/1000);
+  return { step, niceMax: niceMax||step, ticks: ticks.length?ticks:[0,step] };
+}
+// calcola il padding sinistro necessario in base alla larghezza massima delle etichette, cosi non vengono mai tagliate
+function padForLabels(labels){
+  const maxLen = Math.max(6, ...labels.map(l=>String(l).length));
+  return Math.round(Math.max(46, maxLen*6.4 + 16));
+}
+
+// serie mensile consumo+costo per una singola utenza (indipendente dal toggle spesa/consumi)
+function monthlySeriesFor(se, key){
+  return se.map(e=>({
+    label: `${MESI_BREVI[e.mese-1]} '${String(e.anno).slice(2)}`,
+    consumo: e[key] ? e[key].consumo : null,
+    costo: e[key] ? e[key].costo : null,
+  }));
+}
+
+function dualAxisLegendHTML(consumoColor, consumoLabel, spesaColor){
+  return `<div class="legend">
+    <span><i class="dot" style="background:${consumoColor}"></i>${consumoLabel} (linea continua, asse sinistro)</span>
+    <span><i class="dot" style="background:${spesaColor}"></i>Spesa &euro; (linea tratteggiata, asse destro)</span>
+  </div>`;
+}
+
+// grafico mensile a doppio asse: consumo (asse sx) + spesa (asse dx) per una singola utenza
+function dualAxisChartSVG(data, consumoColor, consumoFmt, spesaColor){
+  const W=680,H=280,padT=14,padB=34;
+  const n=data.length;
+  const consumoVals = data.map(d=>d.consumo).filter(v=>v!=null);
+  const costoVals = data.map(d=>d.costo).filter(v=>v!=null);
+  const leftTicksInfo = niceAxisTicks(Math.max(10, ...consumoVals), 4);
+  const rightTicksInfo = niceAxisTicks(Math.max(10, ...costoVals), 4);
+  const leftLabels = leftTicksInfo.ticks.map(v=>consumoFmt(v));
+  const rightLabels = rightTicksInfo.ticks.map(v=>fmtEUR(v).replace(/,00/,''));
+  const padL = padForLabels(leftLabels);
+  const padR = padForLabels(rightLabels);
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const xAt = i => n<=1 ? padL+plotW/2 : padL + (i/(n-1))*plotW;
+  const leftYAt = v => padT + plotH - (v/leftTicksInfo.niceMax)*plotH;
+  const rightYAt = v => padT + plotH - (v/rightTicksInfo.niceMax)*plotH;
+
+  let grid="", labels="";
+  leftTicksInfo.ticks.forEach((val,gi)=>{
+    const y = leftYAt(val);
+    grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+    labels += `<text x="${padL-8}" y="${y+4}" font-size="10" fill="${consumoColor}" text-anchor="end">${leftLabels[gi]}</text>`;
+  });
+  rightTicksInfo.ticks.forEach((val,gi)=>{
+    const y = rightYAt(val);
+    labels += `<text x="${W-padR+8}" y="${y+4}" font-size="10" fill="${spesaColor}" text-anchor="start">${rightLabels[gi]}</text>`;
+  });
+
+  let xLabels="";
+  data.forEach((d,i)=>{
+    if(n>16 && i%2!==0) return;
+    xLabels += `<text x="${xAt(i)}" y="${H-10}" font-size="9.5" fill="#64748b" text-anchor="middle">${esc(d.label)}</text>`;
+  });
+
+  function buildLine(getVal, yFn, color, dash, tooltipFmt){
+    let path="", points="", drawing=false;
+    data.forEach((d,i)=>{
+      const v = getVal(d);
+      if(v==null){ drawing=false; return; }
+      const x=xAt(i), y=yFn(v);
+      path += (drawing? " L " : " M ") + x.toFixed(1) + " " + y.toFixed(1);
+      drawing = true;
+      points += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${color}"><title>${esc(d.label)}: ${tooltipFmt(v)}</title></circle>`;
+    });
+    const dashAttr = dash ? ` stroke-dasharray="${dash}"` : "";
+    return (path ? `<path d="${path}" fill="none" stroke="${color}" stroke-width="2"${dashAttr}/>` : "") + points;
+  }
+
+  const consumoLine = buildLine(d=>d.consumo, leftYAt, consumoColor, null, consumoFmt);
+  const spesaLine = buildLine(d=>d.costo, rightYAt, spesaColor, "5,4", fmtEUR);
+
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    ${grid}${labels}${xLabels}${consumoLine}${spesaLine}
+  </svg>`;
+}
+
+function legendHTML(seriesList=UTENZE){
+  return `<div class="legend">${seriesList.map(u=>`<span><i class="dot" style="background:${u.color}"></i>${u.label}</span>`).join("")}</div>`;
+}
+
+function lineChartSVG(data, seriesList=UTENZE, valueFmt=fmtEUR){
+  const W=680,H=260,padR=16,padT=14,padB=34;
+  const n=data.length;
+  const allVals = data.flatMap(d=>seriesList.map(u=>d[u.key])).filter(v=>v!=null);
+  const rawMax = Math.max(10, ...allVals);
+  const { ticks, niceMax } = niceAxisTicks(rawMax, 4);
+  const maxV = niceMax;
+  const tickLabels = ticks.map(v=>valueFmt(v).replace(/,00/,''));
+  const padL = padForLabels(tickLabels);
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const xAt = i => n<=1 ? padL+plotW/2 : padL + (i/(n-1))*plotW;
+  const yAt = v => padT + plotH - (v/maxV)*plotH;
+
+  let grid="", labels="";
+  ticks.forEach((val,gi)=>{
+    const y = yAt(val);
+    grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+    labels += `<text x="${padL-8}" y="${y+4}" font-size="10" fill="#64748b" text-anchor="end">${tickLabels[gi]}</text>`;
+  });
+  let xLabels="";
+  data.forEach((d,i)=>{
+    if(n>16 && i%2!==0) return;
+    xLabels += `<text x="${xAt(i)}" y="${H-10}" font-size="9.5" fill="#64748b" text-anchor="middle">${esc(d.label)}</text>`;
+  });
+
+  let series="";
+  seriesList.forEach(u=>{
+    let path="", points="", drawing=false;
+    data.forEach((d,i)=>{
+      const v = d[u.key];
+      if(v==null){ drawing=false; return; }
+      const x=xAt(i), y=yAt(v);
+      path += (drawing? " L " : " M ") + x.toFixed(1) + " " + y.toFixed(1);
+      drawing = true;
+      points += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${u.color}"><title>${esc(u.label)}: ${valueFmt(v)}</title></circle>`;
+    });
+    if(path) series += `<path d="${path}" fill="none" stroke="${u.color}" stroke-width="2"/>`;
+    series += points;
+  });
+
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    ${grid}${labels}${xLabels}${series}
+  </svg>`;
+}
+
+function barChartSVG(yearData, seriesList=UTENZE, valueFmt=fmtEUR){
+  const W=680,H=260,padR=16,padT=14,padB=30;
+  const totals = yearData.map(y=> seriesList.reduce((s,u)=> s+(y[u.key]||0), 0));
+  const rawMax = Math.max(10, ...totals);
+  const { ticks, niceMax } = niceAxisTicks(rawMax, 4);
+  const maxV = niceMax;
+  const tickLabels = ticks.map(v=>valueFmt(v).replace(/,00/,''));
+  const padL = padForLabels(tickLabels);
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const n = yearData.length;
+  const slot = plotW/n;
+  const barW = Math.min(70, slot*0.5);
+
+  let grid="", labels="";
+  ticks.forEach((val,gi)=>{
+    const y = padT+plotH-(val/maxV)*plotH;
+    grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+    labels += `<text x="${padL-8}" y="${y+4}" font-size="10" fill="#64748b" text-anchor="end">${tickLabels[gi]}</text>`;
+  });
+
+  let bars="", xLabels="";
+  yearData.forEach((yd,i)=>{
+    const cx = padL + slot*i + slot/2;
+    let yCursor = padT+plotH;
+    seriesList.forEach(u=>{
+      const v = yd[u.key]||0;
+      const h = (v/maxV)*plotH;
+      const yTop = yCursor - h;
+      bars += `<rect x="${(cx-barW/2).toFixed(1)}" y="${yTop.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="${u.color}"><title>${esc(u.label)} ${yd.anno}: ${valueFmt(v)}</title></rect>`;
+      yCursor = yTop;
+    });
+    xLabels += `<text x="${cx}" y="${H-8}" font-size="11" fill="#94a3b8" text-anchor="middle">${yd.anno}</text>`;
+  });
+
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    ${grid}${labels}${bars}${xLabels}
+  </svg>`;
+}
+
+const YEAR_COLORS = ["var(--violet)","var(--amber)","var(--cyan)","var(--rose)","var(--emerald)"];
+function yearColor(years, y){ return YEAR_COLORS[years.indexOf(y) % YEAR_COLORS.length]; }
+
+function yoyLegendHTML(years){
+  return `<div class="legend">${years.map(y=>`<span><i class="dot" style="background:${yearColor(years,y)}"></i>${y}</span>`).join("")}</div>`;
+}
+
+function yoyChartSVG(seriesByYear, years, valueFmt=fmtEUR){
+  const W=680,H=260,padR=16,padT=14,padB=34;
+  const n=12;
+  const allVals = years.flatMap(y=>seriesByYear[y]||[]).filter(v=>v!=null);
+  const rawMax = Math.max(10, ...allVals);
+  const { ticks, niceMax } = niceAxisTicks(rawMax, 4);
+  const maxV = niceMax;
+  const tickLabels = ticks.map(v=>valueFmt(v).replace(/,00/,''));
+  const padL = padForLabels(tickLabels);
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const xAt = i => padL + (i/(n-1))*plotW;
+  const yAt = v => padT + plotH - (v/maxV)*plotH;
+
+  let grid="", labels="";
+  ticks.forEach((val,gi)=>{
+    const y = yAt(val);
+    grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+    labels += `<text x="${padL-8}" y="${y+4}" font-size="10" fill="#64748b" text-anchor="end">${tickLabels[gi]}</text>`;
+  });
+  let xLabels="";
+  MESI_BREVI.forEach((m,i)=>{
+    xLabels += `<text x="${xAt(i)}" y="${H-10}" font-size="9.5" fill="#64748b" text-anchor="middle">${m}</text>`;
+  });
+
+  let series="";
+  years.forEach(y=>{
+    const color = yearColor(years,y);
+    const vals = seriesByYear[y]||[];
+    let path="", points="", drawing=false;
+    vals.forEach((v,i)=>{
+      if(v==null){ drawing=false; return; }
+      const x=xAt(i), yy=yAt(v);
+      path += (drawing? " L " : " M ") + x.toFixed(1) + " " + yy.toFixed(1);
+      drawing = true;
+      points += `<circle cx="${x.toFixed(1)}" cy="${yy.toFixed(1)}" r="3" fill="${color}"><title>${MESI_BREVI[i]} ${y}: ${valueFmt(v)}</title></circle>`;
+    });
+    if(path) series += `<path d="${path}" fill="none" stroke="${color}" stroke-width="2"/>`;
+    series += points;
+  });
+
+  return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    ${grid}${labels}${xLabels}${series}
+  </svg>`;
+}
+
+// ---------------- utilità ----------------
+function r2(v){ return Math.round(Number(v)*100)/100; }
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function showError(err){
+  const msg = (err && (err.message || err.error_description)) || String(err);
+  console.warn("Errore:", msg);
+  let t = document.getElementById("toast");
+  if(!t){ t = document.createElement("div"); t.id="toast"; t.className="toast"; document.body.appendChild(t); }
+  t.textContent = "Errore: " + msg;
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>t.remove(), 6000);
+}
+function persist(){
+  state._justSaved = true;
+  const s0 = document.getElementById("saveIndicator"); if(s0) s0.innerHTML = "&#10003; salvato";
+  clearTimeout(window.__saveTimer);
+  window.__saveTimer = setTimeout(()=>{ state._justSaved=false; const s=document.getElementById("saveIndicator"); if(s) s.innerHTML=""; }, 1800);
+}
+function clienteCorrente(){ return state.clienti.find(c=>c.id===state.clienteId) || null; }
+function fornituraById(id){ return state.forniture.find(f=>f.id===id) || null; }
+function etichettaFornitura(f){
+  if(!f) return "—";
+  const parts = [UTENZA_BY_TIPO[f.tipo].label];
+  if(f.sede) parts.push(f.sede);
+  if(f.codice) parts.push(f.codice);
+  return parts.join(" · ") + (f.attiva===false ? " (cessata)" : "");
+}
+function fornitureFiltrate(){
+  return state.fornituraFiltro ? state.forniture.filter(f=>f.id===state.fornituraFiltro) : state.forniture;
+}
+function piuFornitureStessoTipo(){
+  return ["luce","gas"].some(t=> fornitureFiltrate().filter(f=>f.tipo===t).length > 1);
+}
+
+// Trasforma le bollette (una per fornitura e mese) nelle voci mensili usate dalla dashboard:
+// { id:"anno-mese", anno, mese, casaLuce:{fornitore,consumo,costo,note,dettagli[]}, casaGas:{...} }
+// Con più forniture dello stesso tipo, consumi e costi vengono sommati (kWh con kWh, Smc con Smc).
+function buildEntries(){
+  const visibili = new Map(fornitureFiltrate().map(f=>[f.id,f]));
+  const map = new Map();
+  state.bollette.forEach(b=>{
+    const f = visibili.get(b.fornitura_id);
+    if(!f) return;
+    const key = KEY_BY_TIPO[f.tipo];
+    const id = `${b.anno}-${b.mese}`;
+    if(!map.has(id)) map.set(id, { id, anno:b.anno, mese:b.mese });
+    const e = map.get(id);
+    if(!e[key]) e[key] = { fornitore:"", consumo:0, costo:0, note:"", dettagli:[] };
+    e[key].consumo += Number(b.consumo)||0;
+    e[key].costo += Number(b.costo)||0;
+    e[key].dettagli.push({ ...b, fornitura:f });
+  });
+  const multi = piuFornitureStessoTipo();
+  map.forEach(e=>{
+    UTENZE.forEach(u=>{
+      const d = e[u.key]; if(!d) return;
+      d.consumo = r2(d.consumo); d.costo = r2(d.costo);
+      d.fornitore = [...new Set(d.dettagli.map(x=>x.fornitore))].join(" / ");
+      d.note = d.dettagli.filter(x=>x.note).map(x=> multi ? `${x.fornitura.sede||x.fornitura.codice||""}: ${x.note}` : x.note).join(" | ");
+    });
+  });
+  state.entries = [...map.values()];
+}
+
+// ---------------- accesso ai dati (Supabase) ----------------
+async function fetchAll(makeQuery){
+  const out = []; const page = 1000;
+  for(let from=0;;from+=page){
+    const { data, error } = await makeQuery().range(from, from+page-1);
+    if(error) throw error;
+    out.push(...data);
+    if(data.length < page) return out;
+  }
+}
+
+async function loadSession(session){
+  state.session = session;
+  if(!session){ state.phase = "login"; render(); return; }
+  state.phase = "loading"; render();
+  try{
+    const { data:isAdm, error:e1 } = await sb.rpc("is_admin");
+    if(e1) throw e1;
+    state.isAdmin = !!isAdm;
+    await loadClienti();
+    if(!state.clienti.length && !state.isAdmin){ state.phase = "noaccess"; render(); return; }
+    state.phase = "app";
+    const ricordato = lsGet("cruscotto.cliente");
+    const id = state.clienti.some(c=>c.id===ricordato) ? ricordato : (state.clienti[0] && state.clienti[0].id);
+    if(id) await selectCliente(id); else { if(state.isAdmin) state.tab = "gestione"; render(); }
+  }catch(err){ showError(err); state.phase = "login"; render(); }
+}
+
+async function loadClienti(){
+  const { data, error } = await sb.from("clienti").select("*").order("nome");
+  if(error) throw error;
+  state.clienti = data;
+}
+
+async function selectCliente(id){
+  state.clienteId = id;
+  state.fornituraFiltro = "";
+  state.compare = emptyCompare();
+  state.form = emptyForm();
+  state.formFornitura = emptyFornituraForm();
+  lsSet("cruscotto.cliente", id);
+  await loadClienteData();
+}
+
+async function loadClienteData(){
+  const cid = state.clienteId;
+  if(!cid){ state.forniture=[]; state.bollette=[]; state.offers=[]; state.accessi=[]; buildEntries(); render(); return; }
+  try{
+    const { data:forn, error:e1 } = await sb.from("forniture").select("*").eq("cliente_id", cid).order("tipo").order("created_at");
+    if(e1) throw e1;
+    const ids = forn.map(f=>f.id);
+    const bollette = ids.length ? await fetchAll(()=> sb.from("bollette").select("*").in("fornitura_id", ids).order("anno").order("mese")) : [];
+    const { data:off, error:e2 } = await sb.from("offerte").select("*").eq("cliente_id", cid).order("ordine").order("created_at");
+    if(e2) throw e2;
+    let acc = [];
+    if(state.isAdmin){
+      const { data, error } = await sb.from("accessi").select("*").eq("cliente_id", cid).order("email");
+      if(error) throw error;
+      acc = data;
+    }
+    if(cid !== state.clienteId) return; // nel frattempo è stato scelto un altro cliente
+    state.forniture = forn.sort((a,b)=> (a.tipo===b.tipo ? 0 : a.tipo==="luce" ? -1 : 1) || String(a.created_at).localeCompare(String(b.created_at)));
+    state.bollette = bollette;
+    state.offers = off.map(o=>({ ...o, prezzo:o.prezzo??"", spread:o.spread??"", fisso:o.fisso??"" }));
+    state.accessi = acc;
+    if(state.fornituraFiltro && !fornituraById(state.fornituraFiltro)) state.fornituraFiltro = "";
+    buildEntries();
+  }catch(err){ showError(err); }
+  render();
+}
+
+// ---------------- render orchestration ----------------
+function render(){
+  renderHeader();
+  renderTabs();
+  renderContextBar();
+  const main = document.getElementById("main");
+  if(state.phase==="config") return renderConfigMissing();
+  if(state.phase==="loading"){ main.innerHTML = `<div class="empty-state">Caricamento&hellip;</div>`; return; }
+  if(state.phase==="login") return renderLogin();
+  if(state.phase==="noaccess") return renderNoAccess();
+  if(!clienteCorrente() && state.tab!=="gestione"){
+    main.innerHTML = `<div class="empty-state"><p style="color:#cbd5e1;font-weight:600;margin:0;">Nessun cliente</p>
+      <p style="margin:6px 0 0;">Crea il primo cliente nel tab &laquo;Gestione&raquo;.</p></div>`;
+    return;
+  }
+  const se = sortedEntries();
+  if(state.tab==="dashboard") renderDashboard(se);
+  else if(state.tab==="bollette") renderBollette(se);
+  else if(state.tab==="confronto") renderConfronto(se);
+  else if(state.tab==="gestione" && state.isAdmin) renderGestione();
+  else { state.tab="dashboard"; renderDashboard(se); }
+}
+
+function renderHeader(){
+  const c = clienteCorrente();
+  document.getElementById("brandSub").innerHTML = state.phase==="app"
+    ? (c ? esc(c.nome) : "Nessun cliente selezionato")
+    : "Accesso riservato";
+  document.title = c && state.phase==="app" ? `Cruscotto Costi Energia — ${c.nome}` : "Cruscotto Costi Energia";
+  const ha = document.getElementById("headerActions");
+  if(state.phase!=="app" && state.phase!=="noaccess"){ ha.innerHTML = ""; return; }
+  const email = state.session && state.session.user ? state.session.user.email : "";
+  ha.innerHTML = `
+    <span class="save-indicator" id="saveIndicator">${state._justSaved ? "&#10003; salvato" : ""}</span>
+    ${state.isAdmin && c ? `
+      <label class="btn btn-ghost file-btn">&#8593; Importa Excel<input type="file" id="importInput" accept=".xlsx,.xls"></label>
+      <button class="btn btn-primary" id="exportBtn">&#8595; Scarica Excel</button>` : ""}
+    <span class="user-line">${esc(email)}${state.isAdmin?`<span class="role-badge">admin</span>`:""}</span>
+    <button class="btn btn-ghost" id="logoutBtn">Esci</button>`;
+  const ex = document.getElementById("exportBtn"); if(ex) ex.addEventListener("click", exportExcel);
+  const im = document.getElementById("importInput");
+  if(im) im.addEventListener("change", e=>{ const file = e.target.files[0]; if(file) importExcel(file); e.target.value = ""; });
+  document.getElementById("logoutBtn").addEventListener("click", async ()=>{ await sb.auth.signOut(); });
+}
+
+function renderTabs(){
+  const el = document.getElementById("tabs");
+  if(state.phase!=="app"){ el.innerHTML = ""; return; }
+  const tabs = [["dashboard","Dashboard"],["bollette","Bollette"],["confronto","Confronto offerte"]];
+  if(state.isAdmin) tabs.push(["gestione","Gestione"]);
+  el.innerHTML = tabs.map(([id,label])=>
+    `<button class="tab-btn ${state.tab===id?"active":""}" data-tab="${id}">${label}</button>`
+  ).join("");
+  el.querySelectorAll(".tab-btn").forEach(b=>{
+    b.addEventListener("click", ()=>{ state.tab=b.dataset.tab; render(); });
+  });
+}
+
+function renderContextBar(){
+  const el = document.getElementById("contextBar");
+  if(state.phase!=="app" || (!state.clienti.length)){ el.innerHTML = ""; return; }
+  const showClienti = state.clienti.length > 1 || state.isAdmin;
+  const showForn = state.forniture.length > 1 && state.tab!=="gestione";
+  el.innerHTML = `
+    ${showClienti ? `<div class="field"><label>Cliente</label><select id="clienteSel">
+      ${state.clienti.map(c=>`<option value="${c.id}" ${c.id===state.clienteId?"selected":""}>${esc(c.nome)}</option>`).join("")}
+    </select></div>` : ""}
+    ${showForn ? `<div class="field"><label>Fornitura</label><select id="fornituraSel">
+      <option value="">Tutte le forniture (${state.forniture.length})</option>
+      ${state.forniture.map(f=>`<option value="${f.id}" ${f.id===state.fornituraFiltro?"selected":""}>${esc(etichettaFornitura(f))}</option>`).join("")}
+    </select></div>` : ""}`;
+  const cs = document.getElementById("clienteSel");
+  if(cs) cs.addEventListener("change", ()=> selectCliente(cs.value));
+  const fs = document.getElementById("fornituraSel");
+  if(fs) fs.addEventListener("change", ()=>{ state.fornituraFiltro = fs.value; state.compare = emptyCompare(); buildEntries(); render(); });
+}
+
+// ---------------- schermate di accesso ----------------
+function renderConfigMissing(){
+  document.getElementById("main").innerHTML = `<div class="card login-box">
+    <h3 class="section-title">Configurazione mancante</h3>
+    <p style="font-size:13.5px;color:#cbd5e1;">Apri questo file con un editor di testo e compila <span class="mono">SUPABASE_URL</span> e <span class="mono">SUPABASE_ANON_KEY</span> nel blocco <span class="mono">CONFIG</span> (vedi SETUP.md).</p>
+  </div>`;
+}
+
+function renderLogin(){
+  const m = state.loginMsg;
+  document.getElementById("main").innerHTML = `<div class="card login-box">
+    <h3 class="section-title">Accedi</h3>
+    <p style="font-size:13px;color:#94a3b8;margin-top:0;">Inserisci la tua email: riceverai un link per entrare, senza password.</p>
+    <form id="loginForm">
+      <div class="field"><label>Email</label><input type="email" id="loginEmail" required autocomplete="email" placeholder="nome@azienda.it"></div>
+      <div style="margin-top:12px;"><button class="btn btn-primary" type="submit" id="loginBtn">Inviami il link di accesso</button></div>
+    </form>
+    ${m ? `<p class="msg ${m.ok?"ok":"err"}">${esc(m.text)}</p>` : ""}
+  </div>`;
+  document.getElementById("loginForm").addEventListener("submit", async ev=>{
+    ev.preventDefault();
+    const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+    if(!email) return;
+    document.getElementById("loginBtn").disabled = true;
+    const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.href.split("#")[0] } });
+    state.loginMsg = error ? { ok:false, text: error.message } : { ok:true, text:`Link inviato a ${email}. Apri la mail da questo dispositivo.` };
+    render();
+  });
+}
+
+function renderNoAccess(){
+  document.getElementById("main").innerHTML = `<div class="card login-box">
+    <h3 class="section-title">Accesso non ancora abilitato</h3>
+    <p style="font-size:13.5px;color:#cbd5e1;">L'indirizzo <b>${esc(state.session.user.email)}</b> non &egrave; collegato a nessun cliente. Chiedi al tuo consulente di abilitarlo.</p>
+  </div>`;
+}
+
+// ---------------- bollette tab ----------------
+function renderBollette(se){
+  const el = document.getElementById("main");
+  const admin = state.isAdmin;
+  const multi = piuFornitureStessoTipo();
+  if(!state.form) state.form = emptyForm();
+  const f = state.form;
+  const fornAttive = state.forniture.filter(x=>x.attiva!==false || x.id===f.fornitura_id);
+  if(admin && !f.fornitura_id && fornAttive.length) f.fornitura_id = (state.fornituraFiltro && fornituraById(state.fornituraFiltro) ? state.fornituraFiltro : fornAttive[0].id);
+  const fSel = fornituraById(f.fornitura_id);
+  const unit = fSel ? UTENZA_BY_TIPO[fSel.tipo].unit : "";
+
+  const formHTML = !admin ? "" : !state.forniture.length ? `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">+ Carica una nuova bolletta</h3>
+      <p style="font-size:13px;color:#94a3b8;margin:0;">Questo cliente non ha ancora forniture: aggiungine una (POD luce o PDR gas) nel tab &laquo;Gestione&raquo;.</p>
+    </div>` : `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">${f.id ? "&#9998; Modifica bolletta" : "+ Carica una nuova bolletta"}</h3>
+      <div class="form-grid">
+        <div class="field span-2"><label>Fornitura</label>
+          <select id="f_fornitura">${fornAttive.map(x=>`<option value="${x.id}" ${x.id===f.fornitura_id?"selected":""}>${esc(etichettaFornitura(x))}</option>`).join("")}</select>
+        </div>
+        <div class="field"><label>Anno</label><input type="number" id="f_anno" value="${esc(f.anno)}"></div>
+        <div class="field"><label>Mese</label>
+          <select id="f_mese">${MESI.map((m,i)=>`<option value="${i+1}" ${i+1===Number(f.mese)?"selected":""}>${m}</option>`).join("")}</select>
+        </div>
+        <div class="field span-2"><label>Fornitore</label><input type="text" id="f_fornitore" placeholder="es. FuturEnergy (Energia Pulita)" value="${esc(f.fornitore)}"></div>
+        <div class="field"><label>Consumo (${unit})</label><input type="number" step="0.01" id="f_consumo" value="${esc(f.consumo)}"></div>
+        <div class="field"><label>Costo IVA incl. (&euro;)</label><input type="number" step="0.01" id="f_costo" value="${esc(f.costo)}"></div>
+        <div class="field span-full"><label>Note (offerta, n. fattura, conguagli&hellip;)</label><input type="text" id="f_note" placeholder="es. Offerta ULTRAGREEN — fattura GN00335115/2026 del 07/08/2026" value="${esc(f.note)}"></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="saveEntryBtn">${f.id ? "Salva modifiche" : "+ Salva"}</button>
+        ${f.id ? `<button class="btn btn-ghost" id="cancelEditBtn">Annulla</button>` : ""}
+        <span class="hint" style="margin:0;">Se esiste gi&agrave; una bolletta per la stessa fornitura e mese, viene sostituita.</span>
+      </div>
+      <p class="msg err" id="formErr" style="display:none;"></p>
+    </div>`;
+
+  const cellHTML = (e,u) => {
+    const d = e[u.key];
+    if(!d) return `<td><span class="cell-empty">—</span></td>`;
+    const items = d.dettagli.map(b=>`
+      <div class="bolletta-item">
+        ${multi ? `<div><span class="fornitura-tag">${esc(b.fornitura.sede || b.fornitura.codice || "")}</span></div>` : ""}
+        <div class="mono">${fmtEUR(Number(b.costo))}</div>
+        <div class="fornitore-line">${esc(b.fornitore)} &middot; ${fmtNum(Number(b.consumo), Number(b.consumo)%1?2:0)} ${u.unit}</div>
+        ${b.note?`<div class="note-line">${esc(b.note)}</div>`:""}
+        ${admin ? `<span class="row-actions">
+          <button class="icon-btn edit" data-edit="${b.id}" title="Modifica">&#9998;</button>
+          <button class="icon-btn" data-delete="${b.id}" title="Elimina">&#10005;</button>
+        </span>` : ""}
+      </div>`).join("");
+    return `<td>${items}${d.dettagli.length>1 ? `<div class="fornitore-line" style="margin-top:6px;">Totale: <span class="mono">${fmtEUR(d.costo)}</span> &middot; ${fmtNum(d.consumo)} ${u.unit}</div>` : ""}</td>`;
+  };
+
+  el.innerHTML = `
+    ${formHTML}
+    <div class="card">
+      <div class="top-actions">
+        <h3 class="section-title" style="margin:0;">Storico bollette</h3>
+        <span class="hint" style="margin:0;">Importi IVA inclusa</span>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>Periodo</th>
+          ${UTENZE.map(u=>`<th style="color:${u.color}">${u.label}</th>`).join("")}
+          <th style="text-align:right;">Totale mese</th>
+        </tr></thead>
+        <tbody>
+          ${se.length===0 ? `<tr><td colspan="4" style="text-align:center;color:#475569;padding:24px 0;">Nessuna bolletta caricata.</td></tr>` :
+            [...se].reverse().map(e=>{
+              const totale = (e.casaLuce?.costo||0)+(e.casaGas?.costo||0);
+              return `<tr>
+                <td style="white-space:nowrap;color:#cbd5e1;">${MESI[e.mese-1]} ${e.anno}</td>
+                ${UTENZE.map(u=>cellHTML(e,u)).join("")}
+                <td class="mono" style="text-align:right;color:#e2e8f0;">${fmtEUR(totale)}</td>
+              </tr>`;
+            }).join("")
+          }
+        </tbody>
+      </table></div>
+    </div>
+  `;
+
+  if(admin && state.forniture.length){
+    const bind = (id, field, ev="input") => document.getElementById(id).addEventListener(ev, e=>{ state.form[field]=e.target.value; });
+    document.getElementById("f_fornitura").addEventListener("change", e=>{ state.form.fornitura_id=e.target.value; render(); });
+    bind("f_anno","anno"); bind("f_mese","mese","change"); bind("f_fornitore","fornitore");
+    bind("f_consumo","consumo"); bind("f_costo","costo"); bind("f_note","note");
+    document.getElementById("saveEntryBtn").addEventListener("click", upsertEntry);
+    const cancel = document.getElementById("cancelEditBtn");
+    if(cancel) cancel.addEventListener("click", ()=>{ state.form = emptyForm(); render(); });
+  }
+
+  el.querySelectorAll("[data-edit]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const x = state.bollette.find(y=>y.id===b.dataset.edit);
+      if(!x) return;
+      state.form = { id:x.id, fornitura_id:x.fornitura_id, anno:x.anno, mese:x.mese, fornitore:x.fornitore, consumo:x.consumo, costo:x.costo, note:x.note||"" };
+      render();
+      window.scrollTo && window.scrollTo(0,0);
+    });
+  });
+  el.querySelectorAll("[data-delete]").forEach(b=>{
+    b.addEventListener("click", async ()=>{
+      const x = state.bollette.find(y=>y.id===b.dataset.delete);
+      if(!x) return;
+      if(!confirm(`Eliminare la bolletta di ${MESI[x.mese-1]} ${x.anno} (${etichettaFornitura(fornituraById(x.fornitura_id))})?`)) return;
+      const { error } = await sb.from("bollette").delete().eq("id", x.id);
+      if(error) return showError(error);
+      persist(); await loadClienteData();
+    });
+  });
+}
+
+async function upsertEntry(){
+  const f = state.form;
+  const anno = Number(f.anno), mese = Number(f.mese);
+  const errEl = document.getElementById("formErr");
+  const fail = msg => { if(errEl){ errEl.textContent = msg; errEl.style.display = "block"; } };
+  if(!f.fornitura_id) return fail("Scegli la fornitura.");
+  if(!anno || anno<2000 || anno>2100 || !mese) return fail("Anno o mese non validi.");
+  if(String(f.fornitore).trim()==="" || f.consumo==="" || f.costo==="") return fail("Compila fornitore, consumo e costo.");
+  const payload = { fornitura_id:f.fornitura_id, anno, mese, fornitore:String(f.fornitore).trim(), consumo:Number(f.consumo), costo:Number(f.costo), note:String(f.note||"").trim() || null };
+  // Se in modifica cambia fornitura/mese, la vecchia riga va rimossa per non lasciare doppioni
+  const prima = f.id ? state.bollette.find(b=>b.id===f.id) : null;
+  if(prima && (prima.fornitura_id!==payload.fornitura_id || prima.anno!==anno || prima.mese!==mese)){
+    const dup = state.bollette.find(b=>b.fornitura_id===payload.fornitura_id && b.anno===anno && b.mese===mese);
+    if(dup && !confirm(`Esiste già una bolletta per ${MESI[mese-1]} ${anno} su questa fornitura: verrà sostituita. Continuare?`)) return;
+    const { error } = await sb.from("bollette").delete().eq("id", prima.id);
+    if(error) return showError(error);
+  } else if(!f.id){
+    const dup = state.bollette.find(b=>b.fornitura_id===payload.fornitura_id && b.anno===anno && b.mese===mese);
+    if(dup && !confirm(`Esiste già una bolletta per ${MESI[mese-1]} ${anno} su questa fornitura (${fmtEUR(Number(dup.costo))}): sostituirla?`)) return;
+  }
+  const { error } = await sb.from("bollette").upsert(payload, { onConflict:"fornitura_id,anno,mese" });
+  if(error) return showError(error);
+  state.form = { ...emptyForm(), fornitura_id:f.fornitura_id, anno:f.anno, mese:f.mese };
+  persist();
+  await loadClienteData();
+}
+
+// ---------------- confronto tab ----------------
+function avgAnnualConsumption(key){
+  const rows = sortedEntries().filter(e=>e[key]);
+  if(!rows.length) return 0;
+  const total = rows.reduce((s,e)=> s+(Number(e[key].consumo)||0), 0);
+  return (total/rows.length)*12;
+}
+
+function renderConfronto(){
+  const el = document.getElementById("main");
+  const admin = state.isAdmin;
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Consumo medio annuo stimato</h3>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));">
+        ${UTENZE.map(u=>`
+          <div class="card" style="padding:12px;">
+            <p class="kpi-label" style="margin-bottom:4px;">${u.label}</p>
+            <p class="mono" style="font-size:17px;color:${u.color};margin:0;">${fmtNum(avgAnnualConsumption(u.key))} ${u.unit}/anno</p>
+          </div>`).join("")}
+      </div>
+      <p class="hint">Stima calcolata sui mesi effettivamente caricati in &laquo;Bollette&raquo;${state.fornituraFiltro?" per la fornitura selezionata":""}.</p>
+    </div>
+    <div class="card">
+      <div class="top-actions"><h3 class="section-title" style="margin:0;">Confronta le offerte</h3>
+        <button class="offer-add" id="addOfferBtn">+ Aggiungi offerta</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>Fornitore</th><th>Utenza</th><th>Prezzo energia</th><th>Spread</th><th>Costo fisso/mese</th>
+          <th style="text-align:right;">Stima annua</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${state.offers.length===0 ? `<tr><td colspan="7" style="text-align:center;color:#475569;padding:18px 0;">Nessuna offerta: aggiungine una.</td></tr>` : ""}
+          ${state.offers.map(o=>{
+            const u = UTENZA_BY_TIPO[o.tipo] || UTENZE[0];
+            const consumo = avgAnnualConsumption(u.key);
+            const prezzo = Number(o.prezzo)||0, spread = Number(o.spread)||0, fisso = Number(o.fisso)||0;
+            const stima = (prezzo+spread)*consumo + fisso*12;
+            return `<tr data-offer-row="${o.id}">
+              <td><input type="text" class="inline-input" data-of="fornitore" value="${esc(o.fornitore)}" style="width:130px;"></td>
+              <td><select data-of="tipo" class="inline-input" style="width:auto;">
+                ${UTENZE.map(x=>`<option value="${x.tipo}" ${x.tipo===o.tipo?"selected":""}>${x.label}</option>`).join("")}
+              </select></td>
+              <td><input type="number" step="0.001" class="inline-input" data-of="prezzo" placeholder="&euro;/${u.unit}" value="${esc(o.prezzo)}" style="width:90px;"></td>
+              <td><input type="number" step="0.001" class="inline-input" data-of="spread" placeholder="0" value="${esc(o.spread)}" style="width:75px;"></td>
+              <td><input type="number" step="0.01" class="inline-input" data-of="fisso" placeholder="&euro;" value="${esc(o.fisso)}" style="width:75px;"></td>
+              <td class="mono" style="text-align:right;color:#e2e8f0;">${stima>0?fmtEUR(stima):"—"}</td>
+              <td style="text-align:right;"><button class="icon-btn" data-remove-offer="${o.id}" title="Rimuovi">&#128465;</button></td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table></div>
+      <p class="hint">Stima al prezzo di oggi: per le offerte indicizzate (PUN/PSV) il costo reale varier&agrave; nel tempo.
+        ${admin ? "Le offerte vengono salvate e il cliente le vede." : "Puoi provare valori diversi: le modifiche restano solo su questa pagina e non vengono salvate."}</p>
+    </div>
+  `;
+  document.getElementById("addOfferBtn").addEventListener("click", async ()=>{
+    const nuova = { cliente_id:state.clienteId, fornitore:"", tipo:"luce", ordine: state.offers.length+1 };
+    if(admin){
+      const { data, error } = await sb.from("offerte").insert(nuova).select().single();
+      if(error) return showError(error);
+      state.offers.push({ ...data, prezzo:"", spread:"", fisso:"" });
+      persist();
+    } else {
+      state.offers.push({ ...nuova, id:"loc-"+Date.now(), prezzo:"", spread:"", fisso:"" });
+    }
+    render();
+  });
+  el.querySelectorAll("[data-remove-offer]").forEach(b=>{
+    b.addEventListener("click", async ()=>{
+      const id = b.dataset.removeOffer;
+      if(admin && !id.startsWith("loc-")){
+        const { error } = await sb.from("offerte").delete().eq("id", id);
+        if(error) return showError(error);
+        persist();
+      }
+      state.offers = state.offers.filter(o=> String(o.id)!==id);
+      render();
+    });
+  });
+  el.querySelectorAll("tr[data-offer-row]").forEach(row=>{
+    const id = row.dataset.offerRow;
+    row.querySelectorAll("[data-of]").forEach(input=>{
+      const field = input.dataset.of;
+      input.addEventListener(input.tagName==="SELECT" ? "change" : "input", ()=>{
+        const o = state.offers.find(x=>String(x.id)===id);
+        o[field] = input.value;
+        if(admin) salvaOffertaDifferita(o);
+        render();
+        // restore focus after re-render
+        const again = document.querySelector(`tr[data-offer-row="${id}"] [data-of="${field}"]`);
+        if(again && again.tagName!=="SELECT"){ again.focus(); const v=again.value; again.value=""; again.value=v; }
+      });
+    });
+  });
+}
+
+const __offerTimers = {};
+function salvaOffertaDifferita(o){
+  clearTimeout(__offerTimers[o.id]);
+  __offerTimers[o.id] = setTimeout(async ()=>{
+    const num = v => v===""||v==null ? null : Number(v);
+    const { error } = await sb.from("offerte").update({ fornitore:o.fornitore, tipo:o.tipo, prezzo:num(o.prezzo), spread:num(o.spread), fisso:num(o.fisso) }).eq("id", o.id);
+    if(error) showError(error); else persist();
+  }, 700);
+}
+
+// ---------------- gestione tab (solo admin) ----------------
+function renderGestione(){
+  const el = document.getElementById("main");
+  const c = clienteCorrente();
+  const fc = state.formCliente || (state.formCliente = emptyClienteForm());
+  const ff = state.formFornitura || (state.formFornitura = emptyFornituraForm());
+  const editing = state.editClienteId && c && state.editClienteId===c.id;
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Clienti</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Nome</th><th>Indirizzo</th><th></th></tr></thead>
+        <tbody>
+          ${state.clienti.length===0 ? `<tr><td colspan="3" style="color:#475569;padding:14px 0;">Nessun cliente.</td></tr>` : ""}
+          ${state.clienti.map(x=>`<tr class="${x.id===state.clienteId?"selected":""}">
+            <td style="color:#e2e8f0;">${esc(x.nome)}</td>
+            <td style="color:#94a3b8;">${esc(x.indirizzo||"")}</td>
+            <td style="text-align:right;white-space:nowrap;">${x.id===state.clienteId ? `<span class="hint" style="margin:0;">selezionato</span>` : `<button class="link-btn" data-sel-cliente="${x.id}">Seleziona</button>`}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table></div>
+      <p class="hint">Anche le tue bollette personali sono un &laquo;cliente&raquo;: crealo qui (es. &laquo;Max &mdash; casa&raquo;) e non dare accesso a nessun altro.</p>
+      <div class="form-grid" style="margin-top:12px;">
+        <div class="field span-2"><label>Nuovo cliente &mdash; nome</label><input type="text" id="nc_nome" value="${esc(fc.nome)}" placeholder="Ragione sociale"></div>
+        <div class="field span-2"><label>Indirizzo</label><input type="text" id="nc_indirizzo" value="${esc(fc.indirizzo)}"></div>
+        <div class="field span-2"><label>Note</label><input type="text" id="nc_note" value="${esc(fc.note)}"></div>
+      </div>
+      <div style="margin-top:12px;"><button class="btn btn-primary" id="addClienteBtn">+ Crea cliente</button></div>
+    </div>
+
+    ${c ? `
+    <div class="card" style="margin-bottom:16px;">
+      <div class="top-actions">
+        <h3 class="section-title" style="margin:0;">Anagrafica &mdash; ${esc(c.nome)}</h3>
+        <div style="display:flex;gap:10px;">
+          ${editing ? "" : `<button class="link-btn" id="editClienteBtn">&#9998; Modifica</button>`}
+          <button class="link-btn" id="deleteClienteBtn" style="color:var(--rose);">&#128465; Elimina cliente</button>
+        </div>
+      </div>
+      ${editing ? `
+        <div class="form-grid" style="margin-top:8px;">
+          <div class="field span-2"><label>Nome</label><input type="text" id="ec_nome" value="${esc(c.nome)}"></div>
+          <div class="field span-2"><label>Indirizzo</label><input type="text" id="ec_indirizzo" value="${esc(c.indirizzo||"")}"></div>
+          <div class="field span-2"><label>Note</label><input type="text" id="ec_note" value="${esc(c.note||"")}"></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:10px;"><button class="btn btn-primary" id="saveClienteBtn">Salva</button><button class="btn btn-ghost" id="cancelClienteBtn">Annulla</button></div>
+      ` : `<p style="font-size:13px;color:#94a3b8;margin:4px 0 0;">${esc(c.indirizzo||"Indirizzo non indicato")}${c.note?` &middot; ${esc(c.note)}`:""}</p>`}
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3 class="section-title">Forniture (POD / PDR) &mdash; ${esc(c.nome)}</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Tipo</th><th>Codice</th><th>Sede</th><th>Potenza</th><th>Offerta</th><th>Stato</th><th style="text-align:right;">Bollette</th><th></th></tr></thead>
+        <tbody>
+          ${state.forniture.length===0 ? `<tr><td colspan="8" style="color:#475569;padding:14px 0;">Nessuna fornitura.</td></tr>` : ""}
+          ${state.forniture.map(f=>{
+            const u = UTENZA_BY_TIPO[f.tipo];
+            const nb = state.bollette.filter(b=>b.fornitura_id===f.id).length;
+            return `<tr>
+              <td style="color:${u.color};">${u.label}</td>
+              <td class="mono">${esc(f.codice||"—")}</td>
+              <td>${esc(f.sede||"—")}</td>
+              <td class="mono">${f.potenza_kw!=null && f.potenza_kw!=="" ? fmtNum(Number(f.potenza_kw), Number(f.potenza_kw)%1?1:0)+" kW" : "—"}</td>
+              <td>${esc(f.offerta||"—")}</td>
+              <td>${f.attiva===false ? `<span style="color:var(--muted)">cessata</span>` : `<span style="color:var(--emerald)">attiva</span>`}</td>
+              <td class="mono" style="text-align:right;">${nb}</td>
+              <td style="text-align:right;white-space:nowrap;">
+                <button class="icon-btn edit" data-edit-forn="${f.id}" title="Modifica">&#9998;</button>
+                <button class="icon-btn" data-del-forn="${f.id}" title="Elimina">&#10005;</button>
+              </td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table></div>
+      <h3 class="section-title" style="margin-top:18px;">${ff.id ? "&#9998; Modifica fornitura" : "+ Nuova fornitura"}</h3>
+      <div class="form-grid">
+        <div class="field"><label>Tipo</label><select id="nf_tipo">
+          <option value="luce" ${ff.tipo==="luce"?"selected":""}>Energia Elettrica (POD)</option>
+          <option value="gas" ${ff.tipo==="gas"?"selected":""}>Gas (PDR)</option>
+        </select></div>
+        <div class="field"><label>${ff.tipo==="gas"?"PDR":"POD"}</label><input type="text" id="nf_codice" value="${esc(ff.codice)}" placeholder="${ff.tipo==="gas"?"es. 03270037115412":"es. IT001E…"}"></div>
+        <div class="field span-2"><label>Sede / descrizione</label><input type="text" id="nf_sede" value="${esc(ff.sede)}" placeholder="es. Negozio Via Corniglia"></div>
+        ${ff.tipo==="luce" ? `<div class="field"><label>Potenza (kW)</label><input type="number" step="0.1" id="nf_potenza" value="${esc(ff.potenza_kw)}"></div>` : `<div class="field"></div>`}
+        <div class="field"><label>Stato</label><select id="nf_attiva">
+          <option value="1" ${ff.attiva!==false?"selected":""}>Attiva</option>
+          <option value="0" ${ff.attiva===false?"selected":""}>Cessata</option>
+        </select></div>
+        <div class="field span-full"><label>Offerta corrente</label><input type="text" id="nf_offerta" value="${esc(ff.offerta)}" placeholder="es. ULTRAGREEN MF BASSA TENSIONE"></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:10px;">
+        <button class="btn btn-primary" id="saveFornituraBtn">${ff.id ? "Salva modifiche" : "+ Aggiungi fornitura"}</button>
+        ${ff.id ? `<button class="btn btn-ghost" id="cancelFornituraBtn">Annulla</button>` : ""}
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 class="section-title">Accessi del cliente &mdash; ${esc(c.nome)}</h3>
+      <p style="font-size:13px;color:#94a3b8;margin-top:0;">Le persone con queste email, dopo il login, vedono <b>solo</b> i dati di questo cliente (dashboard, storico bollette, confronto offerte) e non possono modificarli.</p>
+      <div class="table-wrap"><table>
+        <tbody>
+          ${state.accessi.length===0 ? `<tr><td style="color:#475569;">Nessuno: solo tu vedi questo cliente.</td></tr>` : ""}
+          ${state.accessi.map(a=>`<tr><td class="mono">${esc(a.email)}</td><td style="text-align:right;"><button class="link-btn" data-del-acc="${esc(a.email)}" style="color:var(--rose);">Revoca</button></td></tr>`).join("")}
+        </tbody>
+      </table></div>
+      <div class="form-grid" style="margin-top:12px;">
+        <div class="field span-2"><label>Email da abilitare</label><input type="email" id="na_email" placeholder="cliente@azienda.it"></div>
+      </div>
+      <div style="margin-top:12px;"><button class="btn btn-primary" id="addAccessoBtn">+ Abilita</button></div>
+    </div>` : ""}
+  `;
+
+  // --- clienti
+  ["nome","indirizzo","note"].forEach(k=>{
+    document.getElementById("nc_"+k).addEventListener("input", e=>{ state.formCliente[k] = e.target.value; });
+  });
+  document.getElementById("addClienteBtn").addEventListener("click", async ()=>{
+    const nome = state.formCliente.nome.trim();
+    if(!nome) return showError("indica il nome del cliente");
+    const { data, error } = await sb.from("clienti").insert({ nome, indirizzo:state.formCliente.indirizzo.trim()||null, note:state.formCliente.note.trim()||null }).select().single();
+    if(error) return showError(error);
+    state.formCliente = emptyClienteForm();
+    await loadClienti(); persist();
+    await selectCliente(data.id);
+  });
+  el.querySelectorAll("[data-sel-cliente]").forEach(b=> b.addEventListener("click", ()=> selectCliente(b.dataset.selCliente)));
+  if(!c) return;
+
+  const eb = document.getElementById("editClienteBtn");
+  if(eb) eb.addEventListener("click", ()=>{ state.editClienteId = c.id; render(); });
+  const cb = document.getElementById("cancelClienteBtn");
+  if(cb) cb.addEventListener("click", ()=>{ state.editClienteId = null; render(); });
+  const sbtn = document.getElementById("saveClienteBtn");
+  if(sbtn) sbtn.addEventListener("click", async ()=>{
+    const nome = document.getElementById("ec_nome").value.trim();
+    if(!nome) return showError("il nome non può essere vuoto");
+    const { error } = await sb.from("clienti").update({ nome, indirizzo:document.getElementById("ec_indirizzo").value.trim()||null, note:document.getElementById("ec_note").value.trim()||null }).eq("id", c.id);
+    if(error) return showError(error);
+    state.editClienteId = null; await loadClienti(); persist(); render();
+  });
+  document.getElementById("deleteClienteBtn").addEventListener("click", async ()=>{
+    const nb = state.bollette.length;
+    const conferma = prompt(`Eliminare "${c.nome}" con ${state.forniture.length} forniture e ${nb} bollette? L'operazione non si può annullare.\nPer confermare scrivi il nome del cliente:`);
+    if(conferma==null) return;
+    if(conferma.trim() !== c.nome) return showError("nome non corrispondente, cliente non eliminato");
+    const { error } = await sb.from("clienti").delete().eq("id", c.id);
+    if(error) return showError(error);
+    await loadClienti(); persist();
+    if(state.clienti.length) await selectCliente(state.clienti[0].id);
+    else { state.clienteId = null; await loadClienteData(); }
+  });
+
+  // --- forniture
+  document.getElementById("nf_tipo").addEventListener("change", e=>{ state.formFornitura.tipo = e.target.value; render(); });
+  [["nf_codice","codice"],["nf_sede","sede"],["nf_potenza","potenza_kw"],["nf_offerta","offerta"]].forEach(([id,k])=>{
+    const inp = document.getElementById(id); if(inp) inp.addEventListener("input", e=>{ state.formFornitura[k] = e.target.value; });
+  });
+  document.getElementById("nf_attiva").addEventListener("change", e=>{ state.formFornitura.attiva = e.target.value==="1"; });
+  document.getElementById("saveFornituraBtn").addEventListener("click", async ()=>{
+    const x = state.formFornitura;
+    const payload = { cliente_id:c.id, tipo:x.tipo, codice:String(x.codice||"").trim()||null, sede:String(x.sede||"").trim()||null,
+      potenza_kw: x.tipo==="luce" && x.potenza_kw!=="" && x.potenza_kw!=null ? Number(x.potenza_kw) : null,
+      offerta:String(x.offerta||"").trim()||null, attiva:x.attiva!==false };
+    if(!payload.codice && !payload.sede) return showError("indica almeno il codice POD/PDR o la sede");
+    const q = x.id ? sb.from("forniture").update(payload).eq("id", x.id) : sb.from("forniture").insert(payload);
+    const { error } = await q;
+    if(error) return showError(error);
+    state.formFornitura = emptyFornituraForm(); persist(); await loadClienteData();
+  });
+  const cf = document.getElementById("cancelFornituraBtn");
+  if(cf) cf.addEventListener("click", ()=>{ state.formFornitura = emptyFornituraForm(); render(); });
+  el.querySelectorAll("[data-edit-forn]").forEach(b=> b.addEventListener("click", ()=>{
+    const f = fornituraById(b.dataset.editForn); if(!f) return;
+    state.formFornitura = { id:f.id, tipo:f.tipo, codice:f.codice||"", sede:f.sede||"", potenza_kw:f.potenza_kw??"", offerta:f.offerta||"", attiva:f.attiva!==false };
+    render();
+  }));
+  el.querySelectorAll("[data-del-forn]").forEach(b=> b.addEventListener("click", async ()=>{
+    const f = fornituraById(b.dataset.delForn); if(!f) return;
+    const nb = state.bollette.filter(x=>x.fornitura_id===f.id).length;
+    if(!confirm(`Eliminare la fornitura ${etichettaFornitura(f)}${nb?` e le sue ${nb} bollette`:""}? Se è solo cessata, usa invece "Modifica" > Stato: Cessata.`)) return;
+    const { error } = await sb.from("forniture").delete().eq("id", f.id);
+    if(error) return showError(error);
+    persist(); await loadClienteData();
+  }));
+
+  // --- accessi
+  document.getElementById("addAccessoBtn").addEventListener("click", async ()=>{
+    const email = document.getElementById("na_email").value.trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError("email non valida");
+    const { error } = await sb.from("accessi").insert({ email, cliente_id:c.id });
+    if(error) return showError(error.code==="23505" ? "questa email è già abilitata" : error);
+    persist(); await loadClienteData();
+  });
+  el.querySelectorAll("[data-del-acc]").forEach(b=> b.addEventListener("click", async ()=>{
+    if(!confirm(`Revocare l'accesso a ${b.dataset.delAcc}?`)) return;
+    const { error } = await sb.from("accessi").delete().eq("email", b.dataset.delAcc).eq("cliente_id", c.id);
+    if(error) return showError(error);
+    persist(); await loadClienteData();
+  }));
+}
+
+// ---------------- export / import Excel (solo admin) ----------------
+function nomeFileCliente(){
+  const c = clienteCorrente();
+  return (c ? c.nome : "cliente").replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"_").slice(0,40) || "cliente";
+}
+
+function exportExcel(){
+  const se = sortedEntries();
+  const rows = se.map(e=>{
+    const cl=e.casaLuce, cg=e.casaGas;
+    const totale = (cl?.costo||0)+(cg?.costo||0);
+    return {
+      "Anno": e.anno, "Mese": MESI[e.mese-1],
+      "Fornitore Energia Elettrica": cl?.fornitore||"", "Consumo Energia Elettrica (kWh)": cl?.consumo ?? "", "Costo Energia Elettrica (€)": cl?.costo ?? "",
+      "Fornitore Gas": cg?.fornitore||"", "Consumo Gas (Smc)": cg?.consumo ?? "", "Costo Gas (€)": cg?.costo ?? "",
+      "Costo Totale (€)": Number(totale.toFixed(2)), "Note Energia Elettrica": cl?.note||"", "Note Gas": cg?.note||"",
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = [{wch:6},{wch:11},{wch:18},{wch:18},{wch:14},{wch:18},{wch:16},{wch:14},{wch:14},{wch:34},{wch:34}];
+  const visibili = new Set(fornitureFiltrate().map(f=>f.id));
+  const dettaglio = [...state.bollette].filter(b=>visibili.has(b.fornitura_id))
+    .sort((a,b)=> a.anno-b.anno || a.mese-b.mese)
+    .map(b=>{ const f = fornituraById(b.fornitura_id); return {
+      "Anno": b.anno, "Mese": MESI[b.mese-1], "Tipo": UTENZA_BY_TIPO[f.tipo].label, "Codice POD/PDR": f.codice||"", "Sede": f.sede||"",
+      "Fornitore": b.fornitore, "Consumo": Number(b.consumo), "Unità": UTENZA_BY_TIPO[f.tipo].unit, "Costo (€)": Number(b.costo), "Note": b.note||"" }; });
+  const ws2 = XLSX.utils.json_to_sheet(dettaglio);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Dati Mensili");
+  XLSX.utils.book_append_sheet(wb, ws2, "Dettaglio bollette");
+  XLSX.writeFile(wb, `Cruscotto_Energia_${nomeFileCliente()}.xlsx`);
+}
+
+// Importa il foglio "Dati Mensili" (formato del cruscotto) nelle forniture del cliente selezionato.
+// Luce e gas vanno ciascuno sull'unica fornitura attiva di quel tipo, o su quella scelta nel filtro.
+function fornituraPerImport(tipo){
+  const filtro = fornituraById(state.fornituraFiltro);
+  if(filtro) return filtro.tipo===tipo ? filtro : null;
+  const cand = state.forniture.filter(f=>f.tipo===tipo && f.attiva!==false);
+  return cand.length===1 ? cand[0] : null;
+}
+
+function importExcel(file){
+  const reader = new FileReader();
+  reader.onload = async evt => {
+    try{
+      const wb = XLSX.read(evt.target.result, { type:"array" });
+      const ws = wb.Sheets["Dati Mensili"] || wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval:"" });
+      const monthIndex = name => MESI.findIndex(m=> m.toLowerCase()===String(name).trim().toLowerCase()) + 1;
+      const fLuce = fornituraPerImport("luce"), fGas = fornituraPerImport("gas");
+      const payload = []; let saltate = 0;
+      rows.forEach(r=>{
+        const anno = Number(r["Anno"]); const mese = monthIndex(r["Mese"]);
+        if(!anno || !mese) return;
+        const noteVecchie = String(r["Note"]||"").split("|").map(s=>s.trim());
+        const luce = (r["Fornitore Energia Elettrica"] && r["Costo Energia Elettrica (€)"]!=="")
+          ? { fornitore:r["Fornitore Energia Elettrica"], consumo:r["Consumo Energia Elettrica (kWh)"], costo:r["Costo Energia Elettrica (€)"] }
+          : (r["Fornitore Casa Luce"] && r["Costo Casa Luce (€)"]!=="")
+          ? { fornitore:r["Fornitore Casa Luce"], consumo:r["Consumo Casa Luce (kWh)"], costo:r["Costo Casa Luce (€)"] } : null;
+        const gas = (r["Fornitore Gas"] && r["Costo Gas (€)"]!=="")
+          ? { fornitore:r["Fornitore Gas"], consumo:r["Consumo Gas (Smc)"], costo:r["Costo Gas (€)"] }
+          : (r["Fornitore Casa Gas"] && r["Costo Casa Gas (€)"]!=="")
+          ? { fornitore:r["Fornitore Casa Gas"], consumo:r["Consumo Casa Gas (Smc)"], costo:r["Costo Casa Gas (€)"] } : null;
+        if(luce){
+          const note = r["Note Energia Elettrica"]!==undefined ? r["Note Energia Elettrica"] : (noteVecchie[0]||"");
+          if(fLuce) payload.push({ fornitura_id:fLuce.id, anno, mese, fornitore:String(luce.fornitore), consumo:Number(luce.consumo)||0, costo:Number(luce.costo)||0, note:String(note).trim()||null });
+          else saltate++;
+        }
+        if(gas){
+          const note = r["Note Gas"]!==undefined ? r["Note Gas"] : (luce ? (noteVecchie[1]||"") : (noteVecchie[0]||""));
+          if(fGas) payload.push({ fornitura_id:fGas.id, anno, mese, fornitore:String(gas.fornitore), consumo:Number(gas.consumo)||0, costo:Number(gas.costo)||0, note:String(note).trim()||null });
+          else saltate++;
+        }
+      });
+      if(!payload.length){
+        alert(saltate
+          ? "Non so su quale fornitura importare: il cliente ha più POD/PDR dello stesso tipo (o nessuno). Scegli la fornitura nel filtro in alto e riprova."
+          : "Non ho trovato righe valide nel file. Assicurati che sia un export di questo cruscotto.");
+        return;
+      }
+      const c = clienteCorrente();
+      const msg = `Importare ${payload.length} bollette in "${c.nome}"?` +
+        (fLuce ? `\n• Energia Elettrica → ${etichettaFornitura(fLuce)}` : "") +
+        (fGas ? `\n• Gas → ${etichettaFornitura(fGas)}` : "") +
+        (saltate ? `\n${saltate} valori saltati (fornitura non determinabile).` : "") +
+        `\nLe bollette già presenti negli stessi mesi verranno sovrascritte.`;
+      if(!confirm(msg)) return;
+      const { error } = await sb.from("bollette").upsert(payload, { onConflict:"fornitura_id,anno,mese" });
+      if(error) return showError(error);
+      persist(); state.tab = "dashboard";
+      await loadClienteData();
+      alert(`Importate ${payload.length} bollette da "${file.name}".`);
+    } catch(err){
+      alert("Impossibile leggere il file. Assicurati che sia un file .xlsx esportato da questo cruscotto.");
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ---------------- avvio ----------------
+async function avvia(){
+  if(!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY || !window.supabase){ state.phase = "config"; render(); return; }
+  sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  let ultimoUtente;
+  sb.auth.onAuthStateChange((event, session)=>{
+    const uid = session && session.user ? session.user.id : null;
+    if(event==="TOKEN_REFRESHED" && uid===ultimoUtente){ state.session = session; return; }
+    if(uid===ultimoUtente && event!=="SIGNED_OUT") return;
+    ultimoUtente = uid;
+    if(!session){ Object.assign(state, { isAdmin:false, clienti:[], clienteId:null, forniture:[], bollette:[], offers:[], accessi:[], entries:[], tab:"dashboard", loginMsg:null }); }
+    setTimeout(()=> loadSession(session), 0);
+  });
+}
+avvia();
+</script>
+</body>
+</html>

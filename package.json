@@ -1,0 +1,12 @@
+{
+  "name": "cruscotto-costi-energia",
+  "private": true,
+  "description": "Cruscotto costi energia multi-cliente (Supabase)",
+  "scripts": {
+    "test": "node tests/test-app.js && bash tests/test-rls.sh",
+    "seed": "node tools/genera-seed.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  }
+}
