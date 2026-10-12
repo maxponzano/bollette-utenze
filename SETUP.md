@@ -29,15 +29,15 @@ Controllo rapido: in **Table Editor** > `bollette` devi vedere 28 righe.
 
 ## 3. Collega la pagina al database
 
-1. **Project Settings** > **API**: copia **Project URL** e la chiave **anon public**.
+1. **Project Settings** > **API Keys** (o **Connect** in alto): copia il **Project URL** (`https://xxxxxxxx.supabase.co`) e la chiave **publishable** (`sb_publishable_...`). Nei progetti meno recenti la stessa chiave si chiama **anon public** (inizia con `eyJ...`): vanno bene entrambe.
 2. Apri `index.html` con un editor di testo, cerca il blocco `CONFIG` e incollale:
    ```js
    const CONFIG = {
      SUPABASE_URL: "https://xxxxxxxx.supabase.co",
-     SUPABASE_ANON_KEY: "eyJhbGciOi...",
+     SUPABASE_ANON_KEY: "sb_publishable_...",
    };
    ```
-   La chiave *anon* è pensata per stare in una pagina pubblica. **Non usare mai la chiave `service_role`**: quella aggira tutte le protezioni.
+   Questa chiave è pensata per stare in una pagina pubblica. **Non usare mai la chiave `secret` / `service_role`**: aggira tutte le protezioni.
 
 ## 4. Pubblica il sito
 

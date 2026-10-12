@@ -32,7 +32,7 @@ La relazione `Relazione_FuturEnergy_Basilico.docx` va tenuta coerente con i dati
 
 ## 3. Architettura
 
-- Dipendenze da CDN: supabase-js 2.45.4 (jsdelivr) e SheetJS 0.18.5 (cdnjs). Nessun build.
+- Dipendenze da CDN: supabase-js 2.117.2 (jsdelivr) e SheetJS 0.18.5 (cdnjs). Nessun build.
 - `CONFIG` in testa allo script: `SUPABASE_URL` e `SUPABASE_ANON_KEY` (chiave pubblica; mai la `service_role`).
 - Login: magic link via email (`signInWithOtp`). `is_admin()` (RPC) decide il ruolo.
 - Tabelle: `admins(email)`, `clienti`, `accessi(email, cliente_id)`, `forniture(cliente_id, tipo 'luce'|'gas', codice POD/PDR, sede, potenza_kw, offerta, attiva)`,
