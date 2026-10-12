@@ -46,7 +46,7 @@ Il login via email non funziona aprendo il file dal computer: serve un indirizzo
 **Opzione semplice: Netlify Drop**
 1. Vai su <https://app.netlify.com/drop> (account gratuito).
 2. Trascina una cartella che contiene **solo** `index.html`.
-3. Ottieni un indirizzo tipo `https://nome-a-caso.netlify.app`; dalle impostazioni puoi cambiarlo (es. `cruscotto-energia-max.netlify.app`).
+3. Ottieni un indirizzo tipo `https://nome-a-caso.netlify.app`; dalle impostazioni puoi cambiarlo. Sito attuale: **https://cruscotto-energia.netlify.app**. Se Netlify lo mostra "visibile solo al team", clicca **Make public** (la pagina non contiene dati).
 4. Quando aggiorni `index.html`, trascina di nuovo la cartella nella sezione *Deploys* del sito.
 
 **Alternativa: GitHub Pages**, se il repository è pubblico: Settings > Pages > Branch `main` / root.
