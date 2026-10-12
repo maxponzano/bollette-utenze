@@ -28,7 +28,9 @@ La relazione `Relazione_FuturEnergy_Basilico.docx` va tenuta coerente con i dati
 | `SETUP.md` | Guida per Max: Supabase, pubblicazione, primi accessi. |
 | `tests/test-app.js`, `tests/test-rls.sh` | Test interfaccia (jsdom + Supabase simulato) e test regole di accesso (Postgres locale). `npm test`. |
 
-**La fonte di verità dei dati è il database Supabase di Max**, a cui Claude non ha accesso diretto.
+**La fonte di verità dei dati è il database Supabase di Max** (progetto `cruscotto-energia`, regione Europa), a cui Claude non ha accesso diretto.
+Sito in produzione: **https://cruscotto-energia.netlify.app** (Netlify Drop: Max aggiorna trascinando la cartella con `index.html` già configurato). Login admin verificato il 12/10/2026.
+La copia di `index.html` nel repo ha `CONFIG` vuoto: quella pubblicata contiene URL e chiave publishable del progetto.
 
 ## 3. Architettura
 
